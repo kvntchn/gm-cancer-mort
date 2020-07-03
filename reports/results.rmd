@@ -1,0 +1,97 @@
+---
+# CHECK results-working.docx for most recent changes!
+title: "UAW-GM Cohort Study"
+# author: "Kevin Chen"
+date: \today
+output:
+  # word_document
+  pdf_document:
+    includes:
+      in_header: '~/HeadRs/StatHead.sty'
+bibliography: ./../../references/gm.bib
+csl: "C:/Users/kevchen/Documents/HeadRs/AMA.csl"
+geometry: margin=2.4cm
+---
+
+\renewcommand{\arraystretch}{1.1}
+\renewcommand{\headrulewidth}{0pt}
+
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = F,
+											warning = F,
+											message = F,
+											# cache = T,
+											fig.align = 'center',
+											fig.pos = 'ht!',
+											results = 'asis')
+
+library(here)
+library(pander)
+library(knitr)
+library(tidyverse)
+library(data.table)
+library(date)
+library(Hmisc)
+
+source(here::here('wrangling', '00-my-theme.R'))
+
+prettyCI.coxph <- function(object.coxph, row, math.env = F) {
+	CI <- as.data.frame(summary(object.coxph)$conf.int)
+	if (is.numeric(row)) {
+		CI <- CI[row,]
+	}
+	if (is.character(row)) {
+		CI <- CI[agrep(row, rownames(CI), ignore.case = T),]
+	}
+	paste0(
+		formatC(CI$`exp(coef)`, digits = 3, format = 'f'),
+		" ",
+		if (math.env) {'$'},
+		"(",
+		formatC(CI$`lower .95`, digits = 3, format = 'f'),
+		if(math.env) {'-'} else {"--"},
+		formatC(CI$`upper .95`, digits = 3, format = 'f'),
+		")",
+		if (math.env) {'$'})
+}
+
+table.engine <- "xtable"
+upper.percentile <- 0.99
+```
+
+
+```{r, results='hide', echo=F, warning=F, message=F}
+# rm(list = ls()[-grep("cohort$", ls())])
+
+if (!('cohort_analytic' %in% ls())) {
+	source(here::here('cancer mortality', 'modeling.R'))
+	load(here::here('cancer mortality', 'resources/coxph.rdata'))
+	names(outcome) <- 1:length(outcome)
+}
+
+```
+
+# Results
+
+A summary of the study population characteristics are presented in Table 1. By the end of follow-up, about 83% of subjects experienced nonzero exposure to at least one of the metalworking fluid (MWF) types. The MWF types by order of exposure prevalence are soluble, straight, and synthetic.  The sequence remains the same when ordering by the magnitude of lagged cumulative exposure at end of follow-up. Average exposure to soluble, straight, and synthetic MWFs per year was approximately 0.93, 0.55, and 0.37 mg/m^3^$\cdot$years, respectively. Descriptions of the changes in exposure level over time have been reported elsewhere.[@Eisen_2001]
+
+By the end of follow-up, 53% of the study population was deceased; the average age of death among the deceased was about 69 years. Causes of death were selected for exposure-outcome modeling based on the original cohort and other published studies.  While our primary focus was on cancers of the digestive tract: esophageal, stomach, and rectal cancers, we also investigated lung cancer, leukemia, and skin cancer.
+
+## Standardized mortality ratios
+
+Standard mortality ratios are presented in Table 2. The SMR for all causes of death was significantly lower than 1.0. This was driven by the low SMR observed for natural causes (SMR 0.89); that for external causes was significantly different form the null value (SMR 1.04). The low SMR for natural causes appears to be driven by the significantly reduced SMRs observed for nonmalignant diseases, including respiratory disease (SMR 0.84), heart disease (SMR 0.75), and cerebrovascular disease (SMR 0.83). The low observed SMRs for nonmalignant diseases reflect the strong healthy worker effect in this study population. Calculation of SMRs by years of follow-up shows that the SMRs for all cancers, nonmalignant respiratory diseases, and heart disease increase toward 1.0 until attaining their maximum at around 40 years of follow-up.
+
+The SMR for all cancers increases monotonically when calculated by decade of follow-up from the first decade (SMR 0.67, 95% CI 0.55--0.81) through the fourth (SMR 1.01, 95% CI 0.96--1.06). The same pattern was observed for esophageal cancer, intestinal cancers, bile duct/liver/gallbladder cancers, lung cancer, and brain/nervous system cancers. For the fourth decade of follow-up (30 to 40 years), the SMRs for laryngeal (SMR 1.44, 95% CI 0.99--2.10) and brain/nervous system cancers (SMR 1.30, 95% CI 0.98--1.74) were nearly significantly elevated. The SMR for lung cancer was significantly elevated for the fourth decade (SMR 1.10, 95% CI 1.01--1.19) and all years of follow-up after 40 (SMR 1.07, 95% CI 1.002--1.15). The only significantly elevated SMR overall was that for lung cancer (SMR 1.07). The SMR for skin cancer was unexpectedly low (SMR 0.66).
+The healthy worker effect was stronger for African Americans than for whites (analyses by race not shown). The SMR for nonmalignant respiratory disease for African Americans and whites was 0.67 and 0.88, respectively. The contrast was also apparent for heart disease 0.67 versus 0.77. Previous publications on the cohort noted that the SMR was significantly elevated for pancreatic cancer. However, for the extended follow-up period, the significant elevation was observed among African Americans only (SMR 1.31, 95% CI 1.04--1.64). The healthy worker effect may not have been as strong for women than for men (analyses not shown). The SMR for nonmalignant respiratory diseases for women was not significantly different from null (SMR 0.97 95% CI 0.84--1.13). Among men, the SMR for nonmalignant respiratory diseases was significantly less than 1.0 (SMR 0.83 95% CI 0.79--0.97). The SMR for death due to accidents not related to transportation accidents, falls, and medical misadventure was significantly elevated (SMR 2.01, 95% CI 1.86--2.18). Accidental death may serve as an important competing risk in survival analyses.
+
+## Proportional hazards modeling
+
+The adjusted hazard ratio estimates for lung cancer, stomach cancer, rectal cancer, leukemia, and skin cancer associated with lagged cumulative exposure to straight, soluble, and synthetic MWFs are presented in Table 3, Table 4, and Table 5, respectively. In the models for esophageal, stomach cancer, rectal cancer, and leukemia, the pattern of estimated risk associated with the ordinal categories of exposure to synthetic, soluble, soluble, and straight MWFs, respectively, was bell-shaped. The adjusted hazard ratio estimate for death due to esophageal cancer associated with exposure to synthetic MWFs achieved a maximum of HR 1.91 (95% CI 1.04--3.51) at the second level of exposure. That for rectal cancer and exposure to soluble MWFs achieved a maximum of HR 2.36 (95% CI 1.08--5.14), also at the second level of exposure. The adjusted hazard ratio estimates for leukemia associated with exposure to synthetic MWFs increased monotonically to HR 1.58 (95% CI 0.93--2.69). The test for a linear trend did not achieve statistical significance, however (p<0.13). The adjusted hazard ratio estimates for stomach cancer and the different MWFs did not follow a clear trend, but the hazard ratio associated with the highest category of exposure to straight MWFs was statistically significant at HR 1.74 (95% CI 1.04--2.89).
+
+None of the hazard ratios in the lung cancer, skin cancer, or leukemia models were statistically significant. All of the hazard ratio estimates for skin cancer associated with straight and soluble MWFs were greater than 1.0; the adjusted hazard ratio estimate associated with the highest category of exposure to soluble MWFs was almost significant at HR 2.30 (95% CI 0.91--5.83). That for leukemia associated with the highest category of exposure to synthetic MWFs was also almost significant at HR 1.58 (95% CI 0.93--2.69).
+
+The results from the models with MWFs treated as splined continuous variables were largely unremarkable, with the exception of that for stomach cancer and straight MWFs (Figure 1). The adjusted hazard ratio estimates for stomach cancer and exposure to straight MWFs was significantly greater than 1.0 for large portions of the exposure range in the splined models with degrees of freedom 2, 3, and that selected by cAIC (2.1).  The adjusted hazard ratio estimates for the esophageal cancer-synthetic and rectal cancer-soluble models also attain statistical significance, but only very briefly over the exposure range. The splines were fitted over the entire domain of cumulative exposure in the study population, but half of the study population remains alive. Hence, the exposure distribution was strongly right-skewed, and the splined estimates may be unreliable at the right tail of the exposure distribution.
+
+
+\newpage
+# References

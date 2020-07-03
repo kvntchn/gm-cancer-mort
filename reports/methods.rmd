@@ -1,0 +1,57 @@
+---
+title: "UAW-GM Cohort Study"
+# author: "Kevin Chen"
+date: \today
+output:
+  word_document
+  # pdf_document:
+  #   includes:
+  #     in_header: '~/HeadRs/StatHead.sty'
+bibliography: ./../../references/gm.bib
+csl: "C:/Users/kevchen/Documents/HeadRs/int-j-occup-med-envir-health.csl"
+geometry: margin=2.5cm
+---
+
+\renewcommand{\arraystretch}{1.1}
+\renewcommand{\headrulewidth}{0pt}
+
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = F,
+											warning = F,
+											message = F,
+											cache = F,
+											fig.align = 'center',
+											fig.pos = 'ht!',
+											results = 'asis')
+
+library(here)
+library(data.table)
+library(tidyverse)
+
+```
+
+# Study population and methods
+
+Details regarding the United Autoworkers-General Motors (UAW-GM) Cohort Mortality Study have been described extensively in previous publications [@Eisen_1992; @Tolbert_1992; @Eisen_1994; @Hallock_1994; @Woskie_1994]. The present report discusses the methods in brief.
+
+## Cohort
+
+The present study investigates a subset of the UAW-GM Cohort Mortality Study, which included $38\,649$ workers at three different automobile manufacturing plants in Michigan. The present cohort included all hourly workers identified through company records who started work in or after 1938, worked at least three years prior to January 1, 1985, and for whom no more than half of the company record is missing. Follow-up now extends from 1941 to 2015, 10 years longer than the previous update [@Eisen_2001] and includes more than $1.5$ million person-years. Over the 74 years of follow-up, 53\% of the study population had died. Subjects were considered lost to follow-up upon reaching the oldest observed age at death (106 years). By this definition, less than 0.5\% of the participants were lost to follow-up.
+
+Subject characteristics, including year of birth, sex (male or female), race (white or African American), and work-site (plant 1, 2, or 3) were obtained from company records. Subjects with missing race data (22\%) were assumed to be white. The study population was predominantly male (88\%) and white (81\%). Although the subjects were divided more or less equally among the three plants, a majority of the African American subjects (61\%) worked at plant 1.
+
+## Exposure
+
+Exposure assessment has been described thoroughly in previous publications [@Eisen_1992; @Woskie_1994; @Hallock_1994]. Quantitative exposure was based on several hundred personal and area samples for particulate matter (mg/m^3^) from workers in selected categories defined by job and metalworking fluid exposure types. Exposure levels were assigned to individuals according to job type, with weighting by work time. Scale factors were applied to estimate levels of exposure relative to the baseline measurements made by industrial hygienists (1984). These scale factors reflect the continuing downward trend in exposure levels over time. Exposure data were interpolated for subjects missing no more than half of their work history; those missing more than half were excluded from the cohort (< 4\%). The exposure-response models considered exposure to straight, soluble, and synthetic metalworking fluids as accumulating time-averaged sums (mg/m$^3\cdot$years), lagged by 21 years.
+
+## Analytic methods
+
+Person-years were accumulated from 3 years after year of hire or 1941 (whichever later) until death, end of follow-up, or attaining the maximum observed age at death. Causes and dates of death were obtained through the Social Security Administration, the National Death Index, company records, and state mortality files. Mortality records indicated underlying causes of death using codes conforming to the International Classification of Diseases, revisions 9 and 10 (ICD-9 and ICD-10, respectively). Where possible, these ICD codes were mapped to cause of death descriptions according to the keys used in the Lifetable Analysis System (LTAS) [@Waxweiler_1983; @Schubauer-Berigan_2011;@LTAS_2014].
+
+Standardized mortality ratios were computed for several outcomes. Reference rates for deaths prior to 2010 were extracted from LTAS; reference rates for deaths in or after 2010 were obtained through the CDC Underlying Cause of Death (1997-2017) database [@Friede_1993;@CDC_2018]. The strata for SMR analyses were defined by unique combinations of calendar year, age (5-year categories through 84, then 85+), sex (male or female), and race (white or African American).
+
+Independent Cox proportional hazards models were fitted to estimate the effect of lagged cumulative exposure to straight, soluble, and synthetic metalworking fluids for each outcome of interest. The timescale was age; risk sets were constituted by those who lived to or past the case's age at death. The variables included as potential confounders were calendar period, calendar period of hire, race (white or African American), sex (male or female), and plant. Calendar period and calendar period of hire were categorical variables defined by the quantiles of calendar year and year of hire among the cases. Hexiles were used if there were at least 20 case in each category, otherwise tertiles were used. There were no fewer than 15 cases in any category of calendar period or period of hire.
+
+All three metalworking fluids were included in each model to account for potential confounding by one type of fluid exposure on another. In separate models, exposures were modeled either as ordinal categorical variables or as splined continuous variables. The unexposed served as the referent group in the categorical models. The nonzero exposure categories were defined by quantiles of lagged cumulative exposure among the cases. Quartiles were used if there were at least 20 cases in each category. Otherwise, tertiles were used. If there were fewer than 15 cases in each tertile, non-zero exposure was dichotomized about the median. If there were fewer than 20 exposed cases, exposure was treated as a binary variable (unexposed versus exposed). Regression coefficients in categorical models were interpreted as the hazard ratio comparing those with lagged cumulative exposure at the quantile of interest compared to the unexposed, holding all other variables constant. In splined models, lagged cumulative exposure to one metalworking fluid type was splined while exposure to the other types were treated as they were in the categorical models. Penalized splines were fitted with evenly spaced knots [@Eilers_1996] for three different degrees of freedom: 2, 3, and that determined by the corrected AIC of @Hurvich_1991. All analyses were performed in R (version 3.6.1) [@RCT_2019].
+
+# References

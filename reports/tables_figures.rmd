@@ -1,0 +1,930 @@
+---
+title: "UAW-GM Cohort Study"
+# author: "Kevin Chen"
+# subtitle: "Tables and figures"
+date: \today
+output:
+  # word_document
+  pdf_document:
+    # latex_engine: lualatex
+    includes:
+      in_header: '~/HeadRs/StatHead.sty'
+# bibliography: ./../../references/gm.bib
+# csl: "C:/Users/kevchen/Documents/HeadRs/AMA.csl"
+geometry: margin=2.4cm
+---
+
+\fancyhead[R]{}
+\renewcommand{\arraystretch}{1.1}
+\renewcommand{\headrulewidth}{0pt}
+
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = F,
+											warning = F,
+											message = F,
+											# cache = F,
+											fig.align = 'center',
+											fig.pos = 'H',
+											results = 'asis')
+
+library(here)
+library(pander)
+library(knitr)
+library(tidyverse)
+library(data.table)
+library(date)
+library(Hmisc)
+
+source("~/HeadRs/00-my-theme.R")
+
+prettyCI.coxph <- function(object.coxph, row, math.env = F) {
+	CI <- as.data.frame(summary(object.coxph)$conf.int)
+	if (is.numeric(row)) {
+		CI <- CI[row,]
+	}
+	if (is.character(row)) {
+		CI <- CI[agrep(row, rownames(CI), ignore.case = T),]
+	}
+	paste0(
+		formatC(CI$`exp(coef)`, digits = 3, format = 'f'),
+		" ",
+		if (math.env) {'$'},
+		"(",
+		formatC(CI$`lower .95`, digits = 3, format = 'f'),
+		if(math.env) {'-'} else {"--"},
+		formatC(CI$`upper .95`, digits = 3, format = 'f'),
+		")",
+		if (math.env) {'$'})
+}
+
+drive_D <- T
+# table.engine <- "pander"
+table.engine <- "xtable"
+upper.percentile <- 0.99
+messyref <- '_sol5'
+
+```
+
+
+```{r get_cohort, results='hide', echo=F, warning=F, message=F}
+# rm(list = ls())
+outcome.selected <- c("Laryngeal cancer",	"Lung cancer",
+											"Esophageal cancer", "Stomach cancer",
+											"Colon cancer",
+											"Rectal cancer", "Bladder cancer",
+											"Liver cancer",
+											"Pancreatic cancer", "Skin cancer",
+											"Prostate cancer", "Brain and nervous system cancers",
+											"Leukemia", "Breast cancer"
+)
+
+outcome.type <- 'mortality'
+exposure.lag <- 21
+
+
+```
+
+# Tables and Figures
+
+```{r tab1, eval=F}
+# rm(cohort_analytic)
+if (!('cohort_analytic' %in% ls())) {
+	source(here::here('cancer mortality', 'modeling.R'))
+}
+
+source(here::here('reports', 'table1.R'))
+assign(paste0('lag', gsub(" ", "", exposure.lag), ".tab1"),
+			 get.tab1(df = cohort_analytic[immortal == 0 &
+			 																nohist == 0 &
+			 																wh == 1 &
+			 																right.censored == 0],
+			 				 table_engine = table.engine,
+			 				 exposure_lag = exposure.lag))
+
+saveRDS(get(paste0('lag', gsub(" ", "", exposure.lag), ".tab1")),
+				file = here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+													paste0('lag', gsub(" ", "", exposure.lag), ".tab1.rds")
+				))
+
+```
+
+\begin{table}[H]
+\caption{Summary of study population characteristics ($N = 38\,549$; $1.51$ million person-years). The cohort was restricted to individuals who were hired in or after 1938 and for whom at least half of their work history data was available. Individuals were considered lost to follow-up once they reach the maximum observed age at death.\newline}
+\centering
+```{r tab1.render}
+source(here::here('reports', 'table1.R'))
+
+assign(paste0('lag', gsub(" ", "", exposure.lag), ".tab1"),
+			 readRDS(
+			 	here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+			 						 paste0('lag', gsub(" ", "", exposure.lag), ".tab1.rds"))))
+
+
+render.tab1(tab1 = get(paste0('lag', gsub(" ", "", exposure.lag), ".tab1")),
+						tab1.cap = paste0(
+							'Summary of study population characteristics ($N =',
+							# attention!
+							'38\\,549',
+							'$; $',
+							# attention!
+							'1.51',
+							'$ million person-years). The cohort was restricted to individuals who were hired in or after ',
+							# attention!
+							'1938',
+							' and for whom at least half of their work history data was available. Individuals were considered lost to follow-up once they reach the maximum observed age at death.'
+						),
+						table_engine = table.engine,
+						exposure_lag = exposure.lag)
+
+```
+\end{table}
+
+```{r cod}
+cod.names <- c(
+	'All causes',
+	'All natural causes',
+	'All cancers',
+	'Esophageal cancer',
+	'Stomach cancer',
+	'Intestinal cancer',
+	'Rectal cancer',
+	'Kidney cancer',
+	'Bladder and urinary organ cancers',
+	'Bile duct, liver, and gallbladder cancers',
+	'Pancreatic cancer',
+	'Laryngeal cancer',
+	'Lung cancer',
+	'Skin cancer',
+	'Prostate cancer',
+	'Brain and nervous system cancers',
+	'Leukemia',
+	'Breast cancer',
+	'All nonmalignant respiratory diseases',
+	'Chronic obstructive pulmonary disease',
+	'Pneumonia',
+	'Cirrhosis and other chronic liver disease',
+	'All heart diseases',
+	
+	'Ischemic heart disease',
+	'Rheumatic heart disease',
+	'Cerebrovascular disease',
+	'All external causes'
+	# 'Accidents (transportation, falls, and medical)',
+	# 'Other accidents',
+	# 'Homicide'
+)
+
+```
+
+```{r smr, eval=F}
+if (!('ltab' %in% ls())) {
+	source(here::here('causes of death', 'lifetable.R'))
+	source(here::here('causes of death', 'smr.R'))
+}
+smr.df <- cohort_analytic[
+	immortal == 0 & nohist == 0 & wh == 1 & right.censored == 0]
+smr.tab <- lapply(cod.names, function(x) {
+	smr(x, smr.df, ltab, verbose = F, detail = T)})
+smr_despair.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, smr.df[year >= 2000], ltab, verbose = F, detail = T)})
+save(smr.tab, smr_despair.tab, file = here::here('reports/smr/resources', 'smr.tab.rdata'))
+rm(smr.df)
+```
+
+\newpage
+\begin{table}[H]
+\caption{Standardized mortality ratios calculated for the GM-UAW cohort followed from 1941 to 2015. NIOSH LTAS-extracted reference rates were used for the years 1940 through 2009. CDC Mortality data were used as reference rates for 2010 onwards.\newline}
+\centering
+```{r smr.render}
+load(here::here('reports/smr/resources', 'smr.tab.rdata'))
+
+# Row names
+cod.rownames <- c(cod.names)
+
+# Rename some causes
+cod.rownames <- gsub("liver and", "liver, and", cod.rownames)
+cod.rownames[grep("transportation", cod.rownames)] <- "Falls, transportation, and medical accidents"
+
+# Indent all but all causes
+cod.rownames[-1] <- paste0(
+	ifelse(table.engine == 'pander', '&nbsp;&nbsp;', '\\hspace{10pt}'),
+	cod.rownames[-1])
+# indent all but natural/external causes more
+cod.rownames[-c(1, 2, 27)] <- paste0(
+	ifelse(table.engine == 'pander', '&nbsp;&nbsp;', '\\hspace{10pt}'),
+	cod.rownames[-c(1, 2, 27)])
+# 3rd identation for cancers, respiratory disease, heart dieae subtypes
+cod.rownames[-c(1, 2, 3, 19, 22, 23, 26, 27)] <- paste0(
+	ifelse(table.engine == 'pander', '&#9;', '\\hspace{20pt}'),
+	cod.rownames[-c(1, 2, 3, 19, 22, 23, 26, 27)])
+
+# Render
+data.frame(
+	check.names = F,
+	'Cause of death' = cod.rownames,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr.tab[[i]]$N)})), '\\\\,'), '$'),
+	# 'Missing' = paste0('$', prettyNum(
+	# 	unlist(
+	# 		lapply(1:length(cod.rownames), function(i) {
+	# 			nrow(smr.tab[[i]]$excluded[obs.py > 0])})), '\\\\,'), '$'),
+	'SMR' =	paste0("$", formatC(round(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				smr.tab[[i]]$smr})), digits = 2),
+		format = "f", digits = 2), "$"),
+	'(95\\% CI)' = paste0( '$(',
+												 formatC(round(
+												 	unlist(
+												 		lapply(1:length(cod.rownames), function(i) {
+												 			smr.tab[[i]]$smr.lower2.5})), digits = 2),
+												 	format = "f", digits = 2),
+												 ', ',
+												 format(round(
+												 	unlist(
+												 		lapply(1:length(cod.rownames), function(i) {
+												 			smr.tab[[i]]$smr.upper2.5})), digits = 2),
+												 	format = "f", digits = 2),
+												 ')$')
+) -> smr.tab
+
+names(smr.tab)[4] <- paste0(names(smr.tab[4]),
+														ifelse(table.engine == 'pander',
+																	 '^1^', '$^\\flat$'))
+
+smr.tab <- smr.tab[-grep('Kidn|Falls,|Other|Homic|Suic|Overd|Pneum|Rheumati', smr.tab[,1]),]
+
+rownames(smr.tab) <- NULL
+
+if (table.engine == 'pander') {
+	smr.tab %>% pander(
+		justify = c('left', 'right', 'right', 'left'),
+		missing = "",
+		caption = paste0(
+			'Standardized mortality ratios calculated for the GM-UAW cohort followed from 1941 to 2015. NIOSH LTAS-extracted reference rates were used for the years 1940 through 2009. CDC Mortality data were used as reference rates for 2010 onwards.')
+	) %>% cat(
+		paste0(
+			"^1^ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.\n\n"
+		)
+	)} else {
+		smr.tab %>% xtable( 
+			align = 'llrrl',
+			caption = paste0(
+				'Standardized mortality ratios calculated for the GM-UAW cohort followed from 1941 to 2015. NIOSH LTAS-extracted reference rates were used for the years 1940 through 2009. CDC Mortality data were used as reference rates for 2010 onwards.')
+		) %>% print.xtable(
+			add.to.row = list(
+				pos = list(nrow(.)),
+				command = paste0(
+					"\\hline \n",
+					"\\multicolumn{", ncol(.), "}{p{0.7\\textwidth}}{\\footnotesize",
+					"$^\\flat$ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.}",
+					"\\\\")
+			),
+			hline.after = c(-1 ,0, nrow(.))
+		)}
+
+```
+\end{table}
+
+```{r smr.by_race, eval=F}
+if (!('ltab' %in% ls())) {
+	source(here::here('causes of death', 'lifetable.R'))
+	source(here::here('causes of death', 'smr.R'))
+}
+smr.df <- cohort_analytic[
+	immortal == 0 & nohist == 0 & wh == 1 & right.censored == 0]
+
+smr.df[,`:=`(
+	race = factor(finrace,
+								levels = c(1, 2, 9),
+								labels = c("White", "Not white", "Unknown"))
+)]
+
+smr_raceW.tab <- lapply(cod.names, function(x) {
+	smr(x, smr.df[race == "White"], ltab, verbose = F, detail = T)})
+smr_despair_raceW.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, smr.df[year >= 2000 & race == "White"], ltab, verbose = F, detail = T)})
+
+smr_raceB.tab <- lapply(cod.names, function(x) {
+	smr(x, smr.df[race == "Not white"], ltab, verbose = F, detail = T)})
+smr_despair_raceB.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, smr.df[year >= 2000 & race == "Not white"], ltab, verbose = F, detail = T)})
+
+smr.df[race == "Unknown" & plant == 1, race := "Not white"]
+smr_unknown_as_B.tab <- lapply(cod.names, function(x) {
+	smr(x, smr.df[race == "Not white"], ltab, verbose = F, detail = T)})
+smr_despair_unknown_as_B.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, smr.df[year >= 2000 & race == "Not white"], ltab, verbose = F, detail = T)})
+
+save(smr_raceW.tab, smr_despair_raceW.tab,
+		 smr_raceB.tab, smr_despair_raceB.tab,
+		 smr_unknown_as_B.tab, smr_despair_unknown_as_B.tab,
+		 file = here::here('reports/smr/resources', 'smr.by_race.tab.rdata'))
+```
+
+```{r smr.by_race.tab, eval=F}
+load(here::here('reports/smr/resources', 'smr.by_race.tab.rdata'))
+
+smr_raceW.tab <- c(smr_raceW.tab, smr_despair_raceW.tab)
+smr_raceB.tab <- c(smr_raceB.tab, smr_despair_raceB.tab)
+smr_unknown_as_B.tab <- c(
+	smr_unknown_as_B.tab,
+	smr_despair_unknown_as_B.tab)
+
+# Render
+by_race.tab <- data.frame(
+	'Cause of death' = cod.rownames,
+	# White
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_raceW.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				smr_raceW.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+																	formatC(round(
+																		unlist(
+																			lapply(1:length(cod.rownames), function(i) {
+																				smr_raceW.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+																	', ',
+																	formatC(round(
+																		unlist(
+																			lapply(1:length(cod.rownames), function(i) {
+																				smr_raceW.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+																	')'),
+	# Black
+	" " = NA,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_raceB.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				smr_raceB.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+																	formatC(round(
+																		unlist(
+																			lapply(1:length(cod.rownames), function(i) {
+																				smr_raceB.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+																	', ',
+																	formatC(round(
+																		unlist(
+																			lapply(1:length(cod.rownames), function(i) {
+																				smr_raceB.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+																	')'),
+	# Unknown as Black
+	" " = NA,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_unknown_as_B.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				smr_unknown_as_B.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+																	formatC(round(
+																		unlist(
+																			lapply(1:length(cod.rownames), function(i) {
+																				smr_unknown_as_B.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+																	', ',
+																	formatC(round(
+																		unlist(
+																			lapply(1:length(cod.rownames), function(i) {
+																				smr_unknown_as_B.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+																	')'),
+	check.names = F
+) 
+
+by_race.tab <- by_race.tab[-grep('Kidn|Falls,|Other|Homic|Suic|Overd|Pneum|Rheumati',
+																 by_race.tab[,1]),]
+rownames(by_race.tab) <- NULL
+
+if (table.engine == 'pander') {
+	colnames(by_race.tab) <- gsub('\\$\\^\\\\flat\\$', '^1^', colnames(by_race.tab))
+	
+	by_race.tab %>% pander(
+		justify = c('left',
+								'right', 'right', 'left',
+								'center',
+								'right', 'right', 'left',
+								'center',
+								'right', 'right', 'left'),
+		missing = "",
+		caption = paste0(
+			'Standardized mortality ratios by race.')
+	) %>% cat(
+		paste0(
+			"^1^ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.\n\n"
+		)
+	)} else {
+		by_race.tab %>% xtable(
+			align = 'llrrlcrrlcrrl',
+			caption = paste0('Standardized mortality ratios by race.')
+		) %>% print.xtable(
+			add.to.row = list(
+				pos = list(-1, nrow(.)),
+				command = c(
+					paste("\\hline",
+								"& \\multicolumn{3}{c}{White}",
+								"&& \\multicolumn{3}{c}{African American}",
+								"&& \\multicolumn{3}{c}{African American$^*$}",
+								"\\\\ \n",
+								"\\cline{2-4}\\cline{6-8}\\cline{10-12}\n"),
+					paste0(
+						"\\hline \n",
+						"\\multicolumn{", ncol(.), "}{p{1.2\\textwidth}}{\\footnotesize",
+						"$^\\flat$ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.}",
+						"\\\\\n",
+						"\\multicolumn{", ncol(.), "}{p{1.2\\textwidth}}{\\footnotesize",
+						"$^*$ With race unknown from plant 1.}",
+						"\\\\"))
+			),
+			hline.after = c(0, nrow(.))
+		)
+	}
+
+
+
+```
+
+```{r get.table, eval=F}
+source(here::here('cancer mortality', 'modeling.R'))
+
+get.mod(
+	outcome = outcome.selected,
+	probs = probs,
+	outcome_type = outcome.type,
+	run_coxph = F
+)
+
+source(here::here('reports/cancer mortality', 'coef.R'))
+# get.ctab(
+# 	outcome_selected = outcome.selected,
+# 	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
+# 	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+# 	messy_ref = NULL
+# 	)
+
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
+	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+	messy_ref = '_sol5'
+)
+
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
+	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+	messy_ref = '_sol10'
+)
+
+
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
+	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+	messy_ref = '_sol500'
+)
+
+```
+
+```{r get.tikz, eval=F}
+# messyref <- "_sol5"
+# messyref <- "_sol10"
+# messyref <- "_sol500"
+# messyref <- NULL
+
+coxph.tab <- readRDS(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag), paste0(
+	ifelse(is.null(messyref), "", paste0(substring(messyref, 2), '.')), 'coxph.tab.rds')))
+
+# Make outcome name row a spacer row
+coxph.tab[!is.na(name), `:=`(
+	exposure = "",
+	HR = NA,
+	lower = NA,
+	upper = NA
+)]
+
+coxph.tab <- coxph.tab[exposure != "Trend"]
+
+# Ordering check
+coxph.tab[, I := 1:(.N)]
+
+case.count <- coxph.tab[!is.na(name), .(
+	n = as.numeric(gsub(
+		"\\\\|,", "",	substr(name,
+												 unlist(gregexpr("\\(\\$", name)) + 2,
+												 unlist(gregexpr("\\$ ", name)) - 1)
+	))[1]
+), by = .(outcome)]
+
+coxph.tab <- merge(coxph.tab, case.count, on = 'outcome')
+
+setorder(coxph.tab, I)
+
+coxph.ggtab <- as.data.table(as.data.frame(coxph.tab[!is.na(exposure), .(
+	Outcome = factor(outcome, levels = unique(outcome)),
+	exposure,
+	HR = as.numeric(HR),
+	lower = as.numeric(substr(`95\\% CI`, 2, unlist(
+		gregexpr(',', `95\\% CI`)
+	) - 1)),
+	upper = as.numeric(substr(
+		`95\\% CI`, unlist(gregexpr(',', `95\\% CI`)) + 2,
+		nchar(`95\\% CI`) - 1
+	)),
+	`$p$`,
+	mwf,
+	`Number of cases`,
+	n
+)]))
+
+# Number rows within Outcome and mwf
+coxph.ggtab[, within.I := c(.N:1), by = .(Outcome, mwf)]
+# Re-order Outcome
+coxph.ggtab[, Outcome := factor(coxph.ggtab$Outcome, levels =
+																	levels(coxph.ggtab$Outcome)[1:14])]
+coxph.ggtab[, Outcome.num := as.numeric(Outcome)]
+
+# Reorder within outcome
+setorder(coxph.ggtab, Outcome.num, mwf, within.I)
+
+# Bold or not?
+coxph.ggtab[, Outcome := paste0(Outcome, " ($", n, "$ cases)")]
+
+coxph.ggtab[exposure != "" ,exposure := paste0(exposure, " ($", `Number of cases`, "$ cases)")]
+
+# # Add out-of-window data to keep these rows in the plot
+# coxph.ggtab[exposure == "", `:=`(
+# 						HR = -1E5,
+# 						lower = -1E5,
+# 						upper = -1E5,
+# 						exposure = Outcome)]
+
+# Add point for reference group
+coxph.ggtab[is.na(HR) & exposure != "", `:=`(
+	HR = 1,
+	lower = 1,
+	upper = 1
+)]
+
+# Prep for straight
+coxph.ggtab[mwf == "Straight"] %>%
+	as.data.frame() %>%	as.data.table() -> str.ggtab
+# # Add spacer line
+# str.ggtab <- rbindlist(lapply(1:14, function(x = 1) {
+# 	tmp <- str.ggtab[Outcome.num == x][1,]
+# 	tmp[,(names(tmp)[-grep("Outcome", names(tmp))]):=(
+# 		lapply(names(tmp)[-grep("Outcome", names(tmp))], function(x) {NA}))]
+# 	tmp[,`:=`(
+# 		exposure = "",
+# 		HR = -1e5,
+# 		lower = -1e5,
+# 		upper = -1e5
+# 	)]
+# 	if (nrow(str.ggtab[!is.na(HR) & Outcome.num == x]) < 4) {
+# 		if (nrow(str.ggtab[!is.na(HR) & Outcome.num == x]) < 3) {
+# 	rbindlist(list(tmp, tmp, tmp, str.ggtab[!is.na(HR) & Outcome.num == x], tmp))
+# 			} else{rbindlist(list(tmp, tmp, str.ggtab[!is.na(HR) & Outcome.num == x], tmp))}
+# 		} else {rbindlist(list(tmp, str.ggtab[!is.na(HR) & Outcome.num == x], tmp))}
+# }))
+str.ggtab[, I := 1:.N]
+str.ggtab[, `:=`(I.max = max(I[!is.na(n)]), I.min = min(I[!is.na(n)])), by = .(Outcome.num)]
+str.ggtab[, Outcome.num := as.character(Outcome.num)]
+str.ggtab[, Outcome := factor(Outcome, levels = unique(Outcome))]
+str.ggtab <- str.ggtab[!is.na(HR)]
+
+# Prep for soluble
+coxph.ggtab[mwf == "Soluble"] %>%
+	as.data.frame() %>%	as.data.table() -> sol.ggtab
+# # Add spacer line
+# sol.ggtab <- rbindlist(lapply(1:14, function(x = 1) {
+# 	tmp <- sol.ggtab[Outcome.num == x][1,]
+# 	tmp[,(names(tmp)[-grep("Outcome", names(tmp))]):=(
+# 		lapply(names(tmp)[-grep("Outcome", names(tmp))], function(x) {NA}))]
+# 	tmp[,`:=`(
+# 		exposure = "",
+# 		HR = -1e5,
+# 		lower = -1e5,
+# 		upper = -1e5
+# 	)]
+# 	if (nrow(sol.ggtab[!is.na(HR) & Outcome.num == x]) < 4) {
+# 		if (nrow(sol.ggtab[!is.na(HR) & Outcome.num == x]) < 3) {
+# 	rbindlist(list(tmp, tmp, tmp, sol.ggtab[!is.na(HR) & Outcome.num == x], tmp))
+# 			} else {rbindlist(list(tmp, tmp, sol.ggtab[!is.na(HR) & Outcome.num == x], tmp))}
+# 		} else {rbindlist(list(tmp, sol.ggtab[!is.na(HR) & Outcome.num == x], tmp))}
+# }))
+sol.ggtab[, I := 1:.N]
+sol.ggtab[, `:=`(I.max = max(I[!is.na(n)]), I.min = min(I[!is.na(n)])), by = .(Outcome.num)]
+sol.ggtab[, Outcome.num := as.character(Outcome.num)]
+sol.ggtab[, Outcome := factor(Outcome, levels = unique(Outcome))]
+sol.ggtab <- sol.ggtab[!is.na(HR)]
+
+# Prep for synthetic
+coxph.ggtab[mwf == "Synthetic"] %>%
+	as.data.frame() %>%	as.data.table() -> syn.ggtab
+# # Add spacer line
+# syn.ggtab <- rbindlist(lapply(1:14, function(x = 1) {
+# 	tmp <- as.data.table(as.data.frame(syn.ggtab[Outcome.num == x][1,]))
+# 	tmp[,(names(tmp)[-grep("Outcome", names(tmp))]):=(
+# 		lapply(names(tmp)[-grep("Outcome", names(tmp))], function(x) {NA}))]
+# 	tmp[,`:=`(
+# 		exposure = "",
+# 		HR = -1e5,
+# 		lower = -1e5,
+# 		upper = -1e5
+# 	)]
+# 	if (nrow(syn.ggtab[!is.na(HR) & Outcome.num == x]) < 4) {
+# 		if (nrow(syn.ggtab[!is.na(HR) & Outcome.num == x]) < 3) {
+# 	rbindlist(list(tmp, tmp, tmp, syn.ggtab[!is.na(HR) & Outcome.num == x], tmp))
+# 			} else {rbindlist(list(tmp, tmp, syn.ggtab[!is.na(HR) & Outcome.num == x], tmp))}
+# 		} else {rbindlist(list(tmp, syn.ggtab[!is.na(HR) & Outcome.num == x], tmp))}
+# }))
+syn.ggtab[, I := 1:.N]
+syn.ggtab[, `:=`(I.max = max(I[!is.na(n)]), I.min = min(I[!is.na(n)])), by = .(Outcome.num)]
+syn.ggtab[, Outcome.num := as.character(Outcome.num)]
+syn.ggtab[, Outcome := factor(Outcome, levels = unique(Outcome))]
+syn.ggtab <- syn.ggtab[!is.na(HR)]
+
+# Plot ####
+fig.theme <- mytheme + theme(panel.border = element_blank(),
+														 panel.background = element_blank(),
+														 panel.grid.major = element_blank(),
+														 panel.grid.minor = element_blank(),
+														 axis.text.y = element_blank(),
+														 axis.title.y = element_blank(),
+														 axis.ticks = element_blank(),
+														 # Strip text size
+														 strip.text = element_text(size = 6, margin = margin(0, 0, 1.1, 0, "pt")),
+														 # Stip style
+														 strip.background = element_rect(color = "white", fill = "white", linetype = "blank"),
+														 axis.title.x = element_text(size = 6),
+														 # Suppress legend
+														 legend.position = 'none',
+														 # Margin
+														 plot.margin = margin(4, 4, 4, 4))
+
+# Plot str
+str.ggplot <- cowplot::plot_grid(plotlist = lapply(1:14, function(i = 14) {
+	ggplot(str.ggtab[Outcome.num == i], aes(
+		x = I,
+		y = HR,
+		ymin = lower,
+		ymax = upper
+		# shape = Outcome.num
+	), ) +
+		# Horizontal rule
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2, y = -1e5, yend = 1e5), size = 0.5) +
+		# Vertical rule
+		geom_segment(aes(x = I.min - 0.5, xend = I.max - 0.5, y = 1, yend = 1), size = 0.25) +
+		# Ticks indicating x-axis position
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 0.5, yend = 0.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 1, yend = 1), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 1.5, yend = 1.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 2, yend = 2), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 2.5, yend = 2.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 3, yend = 3), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 3.5, yend = 3.5), size = 0.5) +
+		geom_pointrange(size = 0.25, fatten = 0.001) +
+		# scale_shape_manual(values = c(1:7, 1:7)) +
+		geom_text(aes(x = I, y = 0, label = exposure), hjust = 1, size = 1.95) +
+		scale_y_continuous(breaks = seq(0.5, 3.5, 0.5)) +
+		coord_flip(ylim = c(-1.2, 3.5),
+							 xlim = c(str.ggtab[Outcome.num == i, unique(I.min)] - 1.2,
+							 				 str.ggtab[Outcome.num == i, unique(I.max)] - 0.5)) +
+		facet_wrap(. ~ Outcome, ncol = 1, scales = "free_y") +
+		{if (i == 14) {labs(y = "\\hspace{4.2cm}HR")}} +
+		fig.theme +
+		{if (i != 14) {theme(axis.text = element_blank(), axis.title.x = element_blank(), plot.margin = margin(4, 4, -1, 4))}}
+}), ncol = 1,
+rel_heights = c(
+	2.25 + 0.275 * str.ggtab[Outcome.num != 14,.N, by = .(Outcome.num)]$N,
+	3.75 + 0.275 * str.ggtab[Outcome.num == 14,.N, by = .(Outcome.num)]$N))
+
+# Plot sol
+sol.ggplot <- cowplot::plot_grid(plotlist = lapply(1:14, function(i = 14) {
+	ggplot(sol.ggtab[Outcome.num == i], aes(
+		x = I,
+		y = HR,
+		ymin = lower,
+		ymax = upper
+		# shape = Outcome.num
+	), ) +
+		# Horizontal rule
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2, y = -1e5, yend = 1e5), size = 0.5) +
+		# Vertical rule
+		geom_segment(aes(x = I.min - 0.5, xend = I.max - 0.5, y = 1, yend = 1), size = 0.25) +
+		# Ticks indicating x-axis position
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 0.5, yend = 0.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 1, yend = 1), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 1.5, yend = 1.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 2, yend = 2), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 2.5, yend = 2.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 3, yend = 3), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 3.5, yend = 3.5), size = 0.5) +
+		geom_pointrange(size = 0.25, fatten = 0.001) +
+		# scale_shape_manual(values = c(1:7, 1:7)) +
+		geom_text(aes(x = I, y = 0, label = exposure), hjust = 1, size = 1.95) +
+		scale_y_continuous(breaks = seq(0.5, 3.5, 0.5)) +
+		coord_flip(ylim = c(-1.2, 3.5),
+							 xlim = c(sol.ggtab[Outcome.num == i, unique(I.min)] - 1.2,
+							 				 sol.ggtab[Outcome.num == i, unique(I.max)] - 0.5)) +
+		facet_wrap(. ~ Outcome, ncol = 1, scales = "free_y") +
+		{if (i == 14) {labs(y = "\\hspace{4.2cm}HR")}} +
+		fig.theme +
+		{if (i != 14) {theme(axis.text = element_blank(), axis.title.x = element_blank(), plot.margin = margin(4, 4, -1, 4))}}
+}), ncol = 1,
+rel_heights = c(
+	2.25 + 0.275 * sol.ggtab[Outcome.num != 14,.N, by = .(Outcome.num)]$N,
+	3.75 + 0.275 * sol.ggtab[Outcome.num == 14,.N, by = .(Outcome.num)]$N))
+
+# Plot syn
+syn.ggplot <- cowplot::plot_grid(plotlist = lapply(1:14, function(i = 14) {
+	ggplot(syn.ggtab[Outcome.num == i], aes(
+		x = I,
+		y = HR,
+		ymin = lower,
+		ymax = upper
+		# shape = Outcome.num
+	), ) +
+		# Horizontal rule
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2, y = -1e5, yend = 1e5), size = 0.5) +
+		# Vertical rule
+		geom_segment(aes(x = I.min - 0.5, xend = I.max - 0.5, y = 1, yend = 1), size = 0.25) +
+		# Ticks indicating x-axis position
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 0.5, yend = 0.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 1, yend = 1), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 1.5, yend = 1.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 2, yend = 2), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 2.5, yend = 2.5), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 3, yend = 3), size = 0.5) +
+		geom_segment(aes(x = I.min - 1.2, xend = I.min - 1.2 + 0.225, y = 3.5, yend = 3.5), size = 0.5) +
+		geom_pointrange(size = 0.25, fatten = 0.001) +
+		# scale_shape_manual(values = c(1:7, 1:7)) +
+		geom_text(aes(x = I, y = 0, label = exposure), hjust = 1, size = 1.95) +
+		scale_y_continuous(breaks = seq(0.5, 3.5, 0.5)) +
+		coord_flip(ylim = c(-1.2, 3.5),
+							 xlim = c(syn.ggtab[Outcome.num == i, unique(I.min)] - 1.2,
+							 				 syn.ggtab[Outcome.num == i, unique(I.max)] - 0.5)) +
+		facet_wrap(. ~ Outcome, ncol = 1, scales = "free_y") +
+		{if (i == 14) {labs(y = "\\hspace{4.2cm}HR")}} +
+		fig.theme +
+		{if (i != 14) {theme(axis.text = element_blank(), axis.title.x = element_blank(), plot.margin = margin(4, 4, -1, 4))}}
+}), ncol = 1,
+rel_heights = c(
+	2.25 + 0.275 * syn.ggtab[Outcome.num != 14,.N, by = .(Outcome.num)]$N,
+	3.75 + 0.275 * syn.ggtab[Outcome.num == 14,.N, by = .(Outcome.num)]$N))
+
+```
+
+```{run_tikz r, eval=F}
+# Aktiv Grotesk
+# system("luaotfload-tool --find=\"Aktiv Grotesk Cd\"")
+options(
+	tikzLualatexPackages = c(
+		# "\\usepackage[utf8]{inputenc}",
+		"\\usepackage{amssymb}",
+		"\\usepackage[no-math]{fontspec}\n",
+		paste0(
+			"\\setmainfont{Aktiv Grotesk Cd}",
+			ifelse(Sys.info()["sysname"] == "Darwin" &
+						 	Sys.info()["login"] == "kevinchen",
+						 "\n",
+						 "[Extension = .otf,
+			UprightFont = *,
+			BoldFont = *bd,
+			talicFont = *i,
+			BoldItalicFont = *bi]\n")),
+		"\\usepackage[italic]{mathastext}",
+		"\\usepackage{tikz}\n",
+		"\\usepackage[active,tightpage,psfixbb]{preview}\n",
+		"\\PreviewEnvironment{pgfpicture}\n",
+		"\\setlength\\PreviewBorder{0pt}\n"
+	)
+)
+
+tikz(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+								paste0('Figure 1.tex')),
+		 standAlone = T, width = 3.2, height = 0.4374241 * (6 + 0.275 * nrow(str.ggtab)))
+str.ggplot
+dev.off()
+
+tikz(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+								paste0('Figure 2.tex')),
+		 standAlone = T, width = 3.2, height = 0.4374241 * (6 + 0.275 * nrow(sol.ggtab)))
+sol.ggplot
+dev.off()
+
+tikz(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+								paste0('Figure 3.tex')),
+		 standAlone = T, width = 3.2, height = 0.44 * (6 + 0.275 * nrow(syn.ggtab)))
+syn.ggplot
+dev.off()
+
+lualatex(pattern = ".*\\.tex",
+				 directory = here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag)))
+
+```
+
+\begin{figure}[H]
+\caption{Adjusted hazard ratio estimates for cancers and cumulative exposure to straight metalworking fluids.\newline}
+```{r str.ggplot}
+if (table.engine == 'xtable') {
+	knitr::include_graphics(
+		here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+							 paste0('str_hr_plot',  messyref, '.pdf')))
+}
+
+```
+\end{figure}
+
+\begin{figure}[H]
+\caption{Adjusted hazard ratio estimates for cancers and cumulative exposure to soluble metalworking fluids.\newline}
+```{r sol.ggplot}
+if (table.engine == 'xtable') {
+	knitr::include_graphics(
+		here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+							 paste0('sol_hr_plot',  messyref, '.pdf')))
+}
+
+```
+\end{figure}
+
+\begin{figure}[H]
+\caption{Adjusted hazard ratio estimates for cancers and cumulative exposure to synthetic metalworking fluids.\newline}
+```{r syn.ggplot}
+if (table.engine == 'xtable') {
+	knitr::include_graphics(
+		here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+							 paste0('syn_hr_plot',  messyref, '.pdf')))
+}
+
+```
+\end{figure}
+
+
+# Appendix 1
+
+\renewcommand{\thefigure}{A1.\arabic{figure}}
+\setcounter{figure}{0}
+\begin{table}[H]
+\caption{International Classification of Diseases (ICD) codes used to define cases. Deaths prior to 1999 were defined with respect to the 9$^\text{th}$ revision. Deaths in or after 1999 were defined with respect to the 10$^\text{th}$.\newline}
+\centering
+```{r}
+source(here::here('reports', 'cancer mortality/icd_list.R'))
+icd <- data.frame(
+	'Cause of death' = cod.names,
+	# c(cod.names[1],
+	# 	paste0("\\hline ", cod.names[-1])),
+	'ICD 9' = icd9,
+	'ICD 10' = icd10,
+	check.names = F
+)
+
+if (table.engine == 'xtable') {
+	print.xtable(xtable(icd,
+											align = "clp{0.25\\linewidth}p{0.25\\linewidth}",
+											caption = "International Classification of Diseases (ICD) codes used to define cases. Deaths prior to 1999 were defined with respect to the 9$^\\text{th}$ revision. Deaths in or after 1999 were defined with respect to the 10$^\\text{th}$."))
+} else {
+	rownames(icd) <- NULL
+	pander(icd,
+				 justify = "left",
+				 caption = "International Classification of Diseases (ICD) codes used to define cases. Deaths prior to 1999 were defined with respect to the 9^th^ revision. Deaths in or after 1999 were defined with respect to the 10^th^.")
+}
+
+```
+\end{table}
+\newpage
+
+# Appendix 2
+
+\renewcommand{\thetable}{A2.\arabic{table}}
+\setcounter{table}{0}
+```{r str_table.render}
+# messyref <- "_sol5"
+# messyref <- "_sol10"
+# messyref <- "_sol500"
+# messyref <- NULL
+
+# Column widths in inches should be
+# 0.25   1.15  1.14  1.2    0.42   1   0.22
+
+coxph.tab <- readRDS(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag), paste0(
+	ifelse(is.null(messyref), "", paste0(substring(messyref, 2), '.')), 'coxph.tab.rds')))
+
+coxph.tab <- coxph.tab[exposure != 'Trend' | is.na(exposure)]
+
+source(here::here('reports/cancer mortality', 'coef.R'))
+
+for (mwf in c("Straight", "Soluble", "Synthetic")) {
+	render.ctab(mwf_which = mwf)
+}
+
+```

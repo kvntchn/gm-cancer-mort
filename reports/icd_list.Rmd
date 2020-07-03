@@ -1,0 +1,93 @@
+---
+title: "UAW-GM Cohort Study"
+# author: "Kevin Chen"
+subtitle: "ICD Key"
+date: \today
+output:
+  # word_document
+  pdf_document:
+    # latex_engine: lualatex
+    includes:
+      in_header: '~/HeadRs/StatHead.sty'
+# bibliography: ./../../references/gm.bib
+# csl: "C:/Users/kevchen/Documents/HeadRs/AMA.csl"
+geometry: margin=2.4cm
+---
+
+\fancyhead[R]{}
+\renewcommand{\arraystretch}{1.1}
+\renewcommand{\headrulewidth}{0pt}
+
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = F,
+											warning = F,
+											message = F,
+											# cache = F,
+											fig.align = 'center',
+											fig.pos = 'H',
+											results = 'asis')
+
+library(here)
+library(pander)
+library(knitr)
+library(tidyverse)
+library(data.table)
+library(date)
+library(Hmisc)
+
+source(here::here('wrangling', '00-my-theme.R'))
+
+```
+
+
+```{r cod}
+cod.names <- c(
+	'All causes',
+	'All natural causes',
+	'All cancers',
+	'Esophageal cancer',
+	'Stomach cancer',
+	'Intestinal cancer',
+	'Rectal cancer',
+	'Kidney cancer',
+	'Bladder and urinary organ cancers',
+	'Bile duct, liver, and gallbladder cancers',
+	'Pancreatic cancer',
+	'Laryngeal cancer',
+	'Lung cancer',
+	'Skin cancer',
+	'Prostate cancer',
+	'Brain and nervous system cancers',
+	'Leukemia',
+	'Breast cancer',
+	'All nonmalignant respiratory diseases',
+	'Chronic obstructive pulmonary disease',
+	'Pneumonia',
+	'Cirrhosis and other chronic liver disease',
+	'All heart diseases',
+	
+	'Ischemic heart disease',
+	'Rheumatic heart disease',
+	'Cerebrovascular disease',
+	'All external causes'
+	# 'Accidents (transportation, falls, and medical)',
+	# 'Other accidents',
+	# 'Homicide'
+)
+
+```
+
+```{r}
+source(here::here('reports', 'paper/icd_list.R'))
+icd <- data.frame(
+	'Cause of death' = cod.names,
+		# c(cod.names[1],
+		# 	paste0("\\hline ", cod.names[-1])),
+	'ICD 9' = icd9,
+	'ICD 10' = icd10,
+	check.names = F
+)
+
+print.xtable(xtable(icd,
+			 align = "clp{0.25\\linewidth}p{0.25\\linewidth}"))
+```
