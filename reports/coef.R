@@ -8,8 +8,8 @@
 # Make table file ####
 get.ctab <- function(
 	outcome_selected = outcome.selected,
-	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
-	output.dir = paste0('reports/paper/resources/lag ', exposure.lag),
+	coxph.dir  = paste0('resources/mortality/lag ', exposure.lag),
+	output.dir = paste0('reports/resources/lag ', exposure.lag),
 	save_coxph.tab = T,
 	mwf.vec = NULL,
 	messy_ref = NULL,

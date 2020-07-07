@@ -9,7 +9,7 @@ library(tidyverse)
 # rm(list = ls()[-which(ls() == 'cohort')])
 
 if (!('death_type' %in% ls())) {
-	source(here::here('causes of death', 'icd.R'))
+	source(here::here('../gm-wrangling/causes of death', 'icd.R'))
 }
 
 og.ls <- ls()

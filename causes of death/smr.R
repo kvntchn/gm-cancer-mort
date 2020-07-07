@@ -11,17 +11,6 @@ if (!('cohort' %in% ls())) {
 	# Remove people with unknown cause of death
 	cohort <- cohort[!(status15 == 6 & (is.na(icd)))]
 }
-if (!('get.cohort_py' %in% ls())) {
-	source(here::here('wrangling', '05-Get-person-year.R'))
-}
-
-if (!('ltab' %in% ls())) {
-	source(here::here('causes of death', 'lifetable.R'))
-}
-
-if (!('get.ltab_obs' %in% ls())) {
-	source(here::here('wrangling', '05-Get-Outcome.R'))
-}
 
 # SMR function ####
 smr <-

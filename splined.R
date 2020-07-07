@@ -6,7 +6,7 @@ library(here)
 source(here('../gm-wrangling/wrangling', '00-my-theme.R'))
 
 if (sum(grepl('.cohort_prepped', ls())) == 0) {
-	source(here('mortality modeling', 'modeling.R'))
+	source(here('modeling.R'))
 	names(outcome) <- 1:length(outcome)
 }
 
@@ -72,7 +72,7 @@ get.spline <- function(outcome = "Rectal cancer",
 	save(
 		list = paste0(gsub(" ", "_", outcome),
 									'_splined_',	tolower(spline.which), '_df',	spline.df, '.coxph'),
-		file =  to_drive_D(here('modeling/mortality/resources/splined',
+		file =  to_drive_D(here('resources/splined',
 								 paste0(gsub(" ", "_", outcome), '_splined_', tolower(spline.which),
 								 			 '_df', spline.df,	'.coxph',	".Rdata")))
 	)

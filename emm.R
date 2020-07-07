@@ -13,7 +13,7 @@ library(survival)
 exposure.lag <- 21
 
 if (!('cohort_analytic' %in% ls())) {
-	source(here::here('modeling', 'modeling.R'))
+	source(here::here('modeling.R'))
 	names(outcome) <- outcome
 }
 
@@ -35,9 +35,10 @@ rm(list = ls()[grepl('.cohort_prepped', ls())])
 lapply(
 	paste0(gsub(" ", "_", outcome), ".coxph"),
 	function(tmp.coxph) {
+		dir.path <- to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/', 'Straight/')))
+		dir.create(directory.path, showWarnings = F, recursive = T)
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/', 'Straight'),
-				 						paste0(tmp.coxph, '.rdata')))
+				 file = paset0(dir.path, paste0(tmp.coxph, '.rdata'))
 				 )
 	}
 )
@@ -59,9 +60,10 @@ rm(list = ls()[grepl('.cohort_prepped', ls())])
 lapply(
 	paste0(gsub(" ", "_", outcome), ".coxph"),
 	function(tmp.coxph) {
+		dir.path <- to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/', 'Soluble/')))
+		dir.create(directory.path, showWarnings = F, recursive = T)
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/', 'Soluble'),
-				 						paste0(tmp.coxph, '.rdata')))
+				 file = paste0(dir.path, paste0(tmp.coxph, '.rdata'))
 				 )
 	}
 )
@@ -83,9 +85,10 @@ rm(list = ls()[grepl('.cohort_prepped', ls())])
 lapply(
 	paste0(gsub(" ", "_", outcome), ".coxph"),
 	function(tmp.coxph) {
+		dir.path <- to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/', 'Synthetic/')))
+		dir.create(directory.path, showWarnings = F, recursive = T)
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/', 'Synthetic'),
-				 						paste0(tmp.coxph, '.rdata')))
+				 file = paste0(dir.path, paste0(tmp.coxph, '.rdata'))
 				 )
 	}
 )
@@ -106,9 +109,10 @@ get.mod(
 lapply(
 	paste0(gsub(" ", "_", outcome), ".coxph"),
 	function(tmp.coxph) {
+		dir.path <- to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/Intxn/Straight/')))
+		dir.create(directory.path, showWarnings = F, recursive = T)
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/Straight'),
-				 						paste0(tmp.coxph, '.rdata')))
+				 file = paste0(dir.path, paste0(tmp.coxph, '.rdata'))
 				 )
 	}
 )
@@ -128,9 +132,10 @@ get.mod(
 lapply(
 	paste0(gsub(" ", "_", outcome), ".coxph"),
 	function(tmp.coxph) {
+		dir.path <- to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/Intxn/Soluble/')))
+		dir.create(directory.path, showWarnings = F, recursive = T)
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/Soluble'),
-				 						paste0(tmp.coxph, '.rdata')))
+				 file = paste0(dir.path, paste0(tmp.coxph, '.rdata'))
 				 )
 	}
 )
@@ -150,9 +155,10 @@ get.mod(
 lapply(
 	paste0(gsub(" ", "_", outcome), ".coxph"),
 	function(tmp.coxph) {
+		dir.path <- to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/Intxn/Synthetic/')))
+		dir.create(directory.path, showWarnings = F, recursive = T)
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/Synthetic'),
-				 						paste0(tmp.coxph, '.rdata')))
+				 file = paste0(dir.path, paste0(tmp.coxph, '.rdata'))
 				 )
 	}
 )

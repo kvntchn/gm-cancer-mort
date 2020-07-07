@@ -21,7 +21,7 @@ if (!('exposure.lag' %in% ls())) {
 
 # Get outcome/exposure data ####
 if (!('cohort_analytic' %in% ls())) {
-	source(here::here('../gm-wrangling/wrangling', '05-Get-Exposure-Outcome.R'))
+	source(here::here('../gm-wrangling/wrangling', '00-Hello.R'))
 	cohort_analytic <- get.cohort_analytic(
 		outcome_type = outcome.type,
 		exposure.lag = exposure.lag,
@@ -53,19 +53,19 @@ get.mod <- function(
 	run_messy = NULL,
 	specific_messy = NULL,
 	rm_stepwise = F) {
-
+	
 	cohort_py <- as.data.table(as.data.frame(cohort_py))
 	if (!('probs' %in% ls(envir = .GlobalEnv))) {
 		assign('probs', probs, envir = .GlobalEnv)}
 	if (!('covariate.probs' %in% ls(envir = .GlobalEnv))) {
 		assign('covariate.probs', probs, envir = .GlobalEnv)}
-
+	
 	if (!is.null(special.interaction)) {
 		if (!(special.interaction %in% c("Straight", "Soluble", "Synthetic"))) {
 			warning("special.interation must be 'Straight', 'Soluble', or 'Synthetic'")
 		}
 	}
-
+	
 	# if (sum(grepl('soluble', messy, ignore.case = T)) > 0) {
 	# 	cohort_py[, `:=`(
 	# 		cum_soluble500 = ifelse(cum_soluble < 5, 0, cum_soluble),
@@ -73,7 +73,7 @@ get.mod <- function(
 	# 		cum_soluble5 = ifelse(cum_soluble < 0.05, 0, cum_soluble)
 	# 		)]
 	# }
-
+	
 	lapply(outcome,
 				 function(outcome) {
 				 	if (rm_stepwise) {
@@ -85,7 +85,7 @@ get.mod <- function(
 				 			coxph.list,
 				 			ignore.case = T
 				 		)], envir = .GlobalEnv)
-
+				 		
 				 	}
 				 	# Define quantiles
 				 	quantiles.exposure <-
@@ -108,7 +108,7 @@ get.mod <- function(
 				 								yob   = unique(yob)
 				 							),
 				 							by = .(studyno)]
-
+				 	
 				 	quantiles.exposure <- quantiles.exposure[, .(
 				 		Outcome = c(
 				 			paste('\\hline', outcome),
@@ -407,9 +407,9 @@ get.mod <- function(
 				 			}
 				 		}
 				 	)]
-
+				 	
 				 	# quantiles.exposure
-
+				 	
 				 	# Ready for coxph
 				 	tmp.cohort_prepped <-
 				 		cohort_py[
@@ -526,17 +526,17 @@ get.mod <- function(
 				 						include.lowest = T
 				 					)
 				 				)][age.year1 < age.year2 & event != 2]
-
+				 	
 				 	if (min(table(tmp.cohort_prepped[event == 1]$Sex)) <= 10) {
 				 		tmp.cohort_prepped <- tmp.cohort_prepped[Sex == levels(Sex)[which.max(table(tmp.cohort_prepped[event == 1]$Sex))]]
 				 	}
-
+				 	
 				 	assign(paste0(
 				 		gsub(" ", "_", outcome),
 				 		cohort_prepped.suffix
 				 	),
 				 	tmp.cohort_prepped, inherits = T)
-
+				 	
 				 	if (is.null(special.interaction)) {
 				 		basic.formula <- 	paste(
 				 			"Surv(age.year1, age.year2, event) ~",
@@ -620,7 +620,7 @@ get.mod <- function(
 				 			}
 				 		)
 				 	}
-
+				 	
 				 	# Cox models
 				 	if (run_coxph) {
 				 		message(paste0("\nCox model for ", outcome, "..."))
@@ -634,20 +634,18 @@ get.mod <- function(
 				 			".coxph"
 				 		),
 				 		tmp.coxph, inherits = T)
-
+				 		
 				 		saveRDS(tmp.coxph,
 				 						file = to_drive_D(here::here(
-				 							paste0('cancer mortality',
-				 										 ifelse(outcome.type == 'incidence',
-				 										 			 '/incidence',
-				 										 			 paste0(
-				 										 			 	'/mortality',
-				 										 			 	paste0('/lag ', exposure.lag))),
-				 										 ifelse(length(probs) > 4, '/verbose', '')),
+				 							paste0("resources",
+				 								ifelse(outcome.type == 'incidence',
+				 											 '/incidence',
+				 											 paste0(paste0('/lag ', exposure.lag))),
+				 								ifelse(length(probs) > 4, '/verbose', '')),
 				 							paste0(paste0(gsub(" ", "_", outcome), ".coxph"), '.rds')))
 				 		)
 				 	}
-
+				 	
 				 	if (sum(grepl('soluble', run_messy, ignore.case = T)) > 0) {
 				 		# Soluble exposure at or below NIOSH limit allowed into reference
 				 		if (is.null(specific_messy) | sum(grepl("niosh", specific_messy, ignore.case = T))) {
@@ -691,18 +689,18 @@ get.mod <- function(
 				 			),
 				 			tmp.coxph, inherits = T)
 				 		}
-
+				 		
 				 		lapply(c(paste0(gsub(" ", "_", outcome), "_sol500.coxph"),
 				 						 paste0(gsub(" ", "_", outcome), "_sol10.coxph"),
 				 						 paste0(gsub(" ", "_", outcome), "_sol5.coxph")),
 				 					 function(tmp.coxph) {
 				 					 	saveRDS(get(tmp.coxph, envir = .GlobalEnv),
 				 					 					file = to_drive_D(here::here(
-				 					 						paste0('cancer mortality',
-				 					 									 ifelse(outcome.type == 'incidence',
-				 					 									 			 '/incidence',
-				 					 									 			 paste0('/mortality', paste0('/lag ', exposure.lag))),
-				 					 									 ifelse(length(probs) > 4, '/verbose', '')),
+				 					 						paste0("resources",
+				 					 							ifelse(outcome.type == 'incidence',
+				 					 										 '/incidence',
+				 					 										 paste0(paste0('/lag ', exposure.lag))),
+				 					 							ifelse(length(probs) > 4, '/verbose', '')),
 				 					 						paste0(tmp.coxph, '.rds')))
 				 					 	)
 				 					 	message(paste0("Saved ", tmp.coxph))

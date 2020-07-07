@@ -1,0 +1,1384 @@
+---
+title: "GM-UAW Cohort Study"
+subtitle: "Standardized mortality ratios"
+# author: "Kevin Chen"
+date: \today
+output:
+  pdf_document:
+    includes:
+       in_header: '~/HeadRs/StatHead.sty'
+  # keep_tex: true
+geometry: margin=2cm
+---
+
+\renewcommand{\arraystretch}{1.1}
+
+<!-- \fancyhead[L]{GM-UAW Cohort Study -- Standardized mortality ratios} -->
+<!-- \fancyhead[R]{\today} -->
+<!-- \renewcommand{\headheight}{10pt} -->
+\renewcommand{\headrulewidth}{0pt}
+
+
+```{r setup, include=FALSE, cache=F}
+knitr::opts_chunk$set(echo = F,
+											warning = F,
+											message = F,
+											fig.align = 'center',
+											fig.pos = 'H',
+											results = 'asis',
+											fig.height = 3.5,
+											fig.width = 7,
+											cache = F)
+
+library(here)
+library(pander)
+source("~/HeadRs/00-my-theme.R")
+
+# rm(list = ls()[-which(ls() == 'cohort')])
+if (!('cohort' %in% ls())) {
+source(here::here('wrangling', '00-Hello.R'))
+}
+
+if (!('ltab' %in% ls())) {
+source(here::here('causes of death', 'lifetable.R'))
+}
+
+if (!('ltab_obs' %in% ls())) {
+source(here::here('causes of death', 'smr.R'))
+}
+
+if (!('get.cohort_analytic' %in% ls())) {
+source(here::here('wrangling', '05-Get-Exposure-Outcome.R'))
+}
+
+drive_D <- T
+
+```
+
+```{r, include=F, cache=F}
+cohort_py <- get.cohort_py(
+	hire.year.min = 1938,
+	end.year = 2015,
+	hire.year.max = Inf)
+
+cohort_py <- cohort_py[
+	immortal == 0 & 
+		nohist == 0 &
+		wh == 1 &
+		right.censored != 1]
+
+ltab_obs <- get.ltab_obs(cohort_py = as.data.frame(cohort_py))
+
+cohort_analytic <- get.cohort_analytic(cohort_py = ltab_obs)
+```
+
+```{r tab1}
+source(here::here('reports', 'table1.R'))
+table.engine <- 'xtable'
+exposure.lag <- 21
+
+load(to_drive_D(
+		 	here::here(paste0('reports/paper/resources/lag ', exposure.lag),
+		 						 paste0('lag', gsub(" ", "", exposure.lag), ".tab1.rdata"))))
+
+render.tab1(tab1 = get('tab1', envir = .GlobalEnv),
+						tab1.cap = NULL,
+						table_engine = table.engine,
+						exposure_lag = exposure.lag)
+
+```
+
+
+```{r smr, include=F}
+# Run SMRs
+cod.names <- as.character(unique(ltab[.id == 2, cod]))
+cod.names.order <- na.omit(match(cod.levels, cod.names))
+cod.names <- cod.names[cod.names.order]
+cod.names <- cod.names[-grep('Breast', cod.names)]
+```
+
+```{r, eval=F}
+smr.tab <- lapply(cod.names, function(x) {
+	smr(x, ltab_obs, ltab, verbose = F, detail = T)})
+smr_despair.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000], ltab, verbose = F, detail = T)})
+save(smr.tab, smr_despair.tab, file = to_drive_D(here::here('reports/smr/resources', 'smr.tab.rdata')))
+```
+
+```{r smr.tab}
+load(to_drive_D(here::here('reports/smr/resources', 'smr.tab.rdata')))
+
+smr.tab <- c(smr.tab, smr_despair.tab)
+# Extract for tabular display
+# Row names
+cod.rownames <- c(cod.names, c('Suicide', 'Overdose'))
+
+# Rename some causes
+cod.rownames <- gsub("liver and", "liver, and", cod.rownames)
+cod.rownames[grep("transportation", cod.rownames)] <- "Falls, transportation, and medical accidents"
+
+# Footnote marker
+cod.rownames[grep("Other accidents", cod.rownames)] <- paste0(
+	cod.rownames[grep("Other accidents", cod.rownames)], "$^\\sharp$")
+cod.rownames[grep("Overdose|Suicide", cod.rownames)] <- paste0(
+	cod.rownames[grep("Overdose|Suicide", cod.rownames)], "$^\\dagger$")
+cod.rownames[grep("Kidney", cod.rownames)] <- paste0(
+	cod.rownames[grep("Kidney", cod.rownames)], "$^\\ddagger$")
+
+# Indents
+cod.rownames[-c(1, 2, 3, 17, 20, 21, 24, 25)] <- paste0('\\hspace{10pt}', cod.rownames[-c(1, 2, 3, 17, 20, 21, 24, 25)])
+
+# Render
+data.frame(
+	check.names = F,
+	'Cause of death' = cod.rownames,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr.tab[[i]]$N)})), '\\\\,'), '$'),
+	# 'Missing' = paste0('$', prettyNum(
+	# 	unlist(
+	# 		lapply(1:length(cod.rownames), function(i) {
+	# 			nrow(smr.tab[[i]]$excluded[obs.py > 0])})), '\\\\,'), '$'),
+	'SMR' =	formatC(
+		round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr.tab[[i]]$smr})), digits = 2),
+		format = 'f', digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr.tab[[i]]$smr.lower2.5})), digits = 2),
+			format = 'f', digits = 2),
+				 ', ',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr.tab[[i]]$smr.upper2.5})), digits = 2),
+			format = 'f', digits = 2),
+				 ')')
+) -> smr.tab
+
+smr.tab %>% xtable(
+	align = 'llrrl',
+	caption = paste0(
+		'Standardized mortality ratios calculated for the GM-UAW cohort followed from ',
+		min(year(cohort_py$start)), ' to ', max(year(cohort_py$end)),
+		'. NIOSH LTAS-extracted reference rates were used for the years 1940 through 2009. CDC Mortality data were used as reference rates for 2010 onwards.')
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(nrow(.)),
+		command = paste0(
+			"\\hline \n",
+			"\\multicolumn{", ncol(.), "}{p{0.675\\textwidth}}{\\footnotesize",
+			"$^\\flat$ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.}",
+			"\\\\\n",
+			"\\multicolumn{", ncol(.), "}{p{0.675\\textwidth}}{\\footnotesize",
+			"$^\\ddagger$ Classification of deaths as kidney cancer may be unreliable in the observed population.}",
+			"\\\\\n",
+			"\\multicolumn{", ncol(.), "}{p{0.675\\textwidth}}{\\footnotesize",
+			"$^\\sharp$ Other accidents includes deaths not due to falls, transportation, and medical accidents as well as deaths due to poisonings of unknown intent. Poisonings of unknown intent were included both in this category and in overdose.}",
+			"\\\\\n",
+			"\\multicolumn{", ncol(.), "}{p{0.675\\textwidth}}{\\footnotesize",
+			"$^\\dagger$ SMRs for suicide and overdose were calculated for the years 2000 onwards only, using CDC Mortality data as reference rates.}",
+			"\\\\")
+	),
+	hline.after = c(-1 ,0, nrow(.))
+)
+
+```
+
+```{r accidents}
+source(here::here('causes of death', 'other_accidents.R'))
+other.icd[is.na(upper), upper := lower]
+other.icd[is.na(prefix), prefix := ""]
+
+accidents <- table(ltab_obs[`Other accidents` == 1,.(icd, v_icd)])
+accidents <- as.data.table(accidents)
+
+# Get rid of useless rows
+accidents <- accidents[N != 0]
+
+# Shorten icd (get rid of decimal)
+accidents[v_icd == 9, icd := substr(icd, 1, 3)]
+accidents[v_icd == 10, icd := substr(icd, 1, 3)]
+
+# Retabulate
+accidents <- accidents[,.(N = sum(N)), by = .(icd, v_icd)]
+
+icd_des <- apply(sapply(
+	sapply(1:nrow(other.icd), function(i) {
+		paste0(other.icd[i, prefix],
+			sprintf('%02d', other.icd[i, lower]:other.icd[i, upper])
+			)
+	}),
+	function(other) {
+		accidents[,icd] %in% other
+	}), 1, which)
+icd_des[lengths(icd_des) == 0] <- NA
+icd_des <- unlist(icd_des)
+
+accidents[,`:=`(Description = other.icd$description[icd_des],
+								prefix = other.icd$prefix[icd_des],
+								lower = other.icd$lower[icd_des],
+								upper = other.icd$upper[icd_des]
+								)]
+
+accidents <- accidents[,.(
+	prefix = unique(prefix),
+	lower = unique(lower),
+	upper = unique(upper),
+	N = sum(N)
+), by = Description]
+
+accidents <- accidents[,.(
+	Description,
+	ICD = ifelse(lower != upper, paste0(paste0(prefix, lower), " to ",
+							 paste0(prefix, upper)),
+							 paste0(paste0(prefix, lower))),
+	`$N$` = N
+)]
+
+accidents <- rbind(accidents,
+									 as.data.frame(list("Total", "", sum(accidents$`$N$`)),
+									 							col.names = names(accidents),
+									 							check.names = F)
+									 )
+
+accidents %>% xtable(
+	align = 'cp{0.5\\linewidth}lc',
+	caption = paste0(
+		'Other accidents in detail.')
+) %>% print.xtable()
+
+```
+
+```{r smr.by_plant, eval=F}
+# Run SMRs
+smr_plant1.tab <- lapply(cod.names, function(x) {
+	smr(x, ltab_obs[plant == 1], ltab, verbose = F, detail = T)})
+smr_despair_plant1.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & plant == 1], ltab, verbose = F, detail = T)})
+
+smr_plant2.tab <- lapply(cod.names, function(x) {
+	smr(x, ltab_obs[plant == 2], ltab, verbose = F, detail = T)})
+smr_despair_plant2.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & plant == 2], ltab, verbose = F, detail = T)})
+
+smr_plant3.tab <- lapply(cod.names, function(x) {
+	smr(x, ltab_obs[plant == 3], ltab, verbose = F, detail = T)})
+smr_despair_plant3.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & plant == 3], ltab, verbose = F, detail = T)})
+
+save(smr_plant1.tab, smr_despair_plant1.tab,
+		 smr_plant2.tab, smr_despair_plant2.tab,
+		 smr_plant3.tab, smr_despair_plant3.tab,
+		 file = to_drive_D(here::here('reports/smr/resources', 'smr.by_plant.tab.rdata')))
+
+```
+
+```{r smr.by_plant.tab}
+load(to_drive_D(here::here('reports/smr/resources', 'smr.by_plant.tab.rdata')))
+
+smr_plant1.tab <- c(smr_plant1.tab, smr_despair_plant1.tab)
+smr_plant2.tab <- c(smr_plant2.tab, smr_despair_plant2.tab)
+smr_plant3.tab <- c(smr_plant3.tab, smr_despair_plant3.tab)
+
+# Render
+data.frame(
+	check.names = F,
+	'Cause of death' = cod.rownames,
+	# Plant 1
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_plant1.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_plant1.tab[[i]]$smr})), digits = 2),
+	# '(95\\% CI)$^\\flat$' = paste0( ' (',
+	# 	round(
+	# 		unlist(
+	# 			lapply(1:length(cod.rownames), function(i) {
+	# 				smr_plant1.tab[[i]]$smr.lower2.5})), digits = 2),
+	# 			 ', ',
+	# 	round(
+	# 		unlist(
+	# 			lapply(1:length(cod.rownames), function(i) {
+	# 				smr_plant1.tab[[i]]$smr.upper2.5})), digits = 2),
+	# 			 ')'),
+	# Plant 2
+	" " = NA,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_plant2.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_plant2.tab[[i]]$smr})), digits = 2),
+	# '(95\\% CI)$^\\flat$' = paste0( ' (',
+	# 	round(
+	# 		unlist(
+	# 			lapply(1:length(cod.rownames), function(i) {
+	# 				smr_plant2.tab[[i]]$smr.lower2.5})), digits = 2),
+	# 			 ', ',
+	# 	round(
+	# 		unlist(
+	# 			lapply(1:length(cod.rownames), function(i) {
+	# 				smr_plant2.tab[[i]]$smr.upper2.5})), digits = 2),
+	# 			 ')'),
+	" " = NA,
+	# Plant 3
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_plant3.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_plant3.tab[[i]]$smr})), digits = 2)
+	# '(95\\% CI)$^\\flat$' = paste0( ' (',
+	# 	round(
+	# 		unlist(
+	# 			lapply(1:length(cod.rownames), function(i) {
+	# 				smr_plant3.tab[[i]]$smr.lower2.5})), digits = 2),
+	# 			 ', ',
+	# 	round(
+	# 		unlist(
+	# 			lapply(1:length(cod.rownames), function(i) {
+	# 				smr_plant3.tab[[i]]$smr.upper2.5})), digits = 2),
+	# 			 ')')
+) %>% xtable(
+	align = 'lp{0.5\\linewidth}rrcrrcrr',
+	caption = paste0('Standardized mortality ratios by plant. The ',
+									 # n_distinct(cohort_py[!is.na(yod) & plant == 9, studyno]),
+									 ' individuals who worked at several plants are not tabulated here.')
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1, nrow(.)),
+		command = c(
+			paste("\\hline",
+						"& \\multicolumn{2}{c}{Gear \\& Axle}",
+						"&& \\multicolumn{2}{c}{HydraMatic}",
+						"&& \\multicolumn{2}{c}{Saginaw}",
+										"\\\\ \n",
+										"\\cline{2-3}\\cline{5-6}\\cline{8-9}\n"),
+			paste0(
+					"\\hline \n \\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+		"$^\\sharp$ Other accidents includes deaths not due to falls, transportation, and medical accidents as well as deaths due to poisonings of unknown intent. Poisonings of unknown intent were included both in this category and in overdose.}",
+										"\\\\ \n",
+		"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+						 "$^\\dagger$ SMRs for suicide and overdose were calculated for the years 2000 onwards only, using CDC Mortality data as reference rates.}",
+										"\\\\"))
+	),
+	hline.after = c(0, nrow(.))
+)
+
+```
+
+```{r smr.by_gender, include=F}
+cod_withBreast.names <- c(cod.names, "Breast cancer")
+cod_withBreast.names <- cod_withBreast.names[
+	na.omit(match(cod.levels, cod_withBreast.names))]
+```
+
+```{r, eval=F}
+smr_genderM.tab <- lapply(cod_withBreast.names, function(x) {
+	smr(x, ltab_obs[sex == "M"], ltab, verbose = F, detail = T)})
+smr_despair_genderM.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & sex == "M"], ltab, verbose = F, detail = T)})
+
+smr_genderF.tab <- lapply(cod_withBreast.names, function(x) {
+	smr(x, ltab_obs[sex == "F"], ltab, verbose = F, detail = T)})
+smr_despair_genderF.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & sex == "F"], ltab, verbose = F, detail = T)})
+
+save(smr_genderM.tab, smr_despair_genderM.tab,
+		 smr_genderF.tab, smr_despair_genderF.tab,
+		 file = to_drive_D(here::here('reports/smr/resources', 'smr.by_gender.tab.rdata')))
+```
+
+```{r smr.by_gender.tab}
+load(to_drive_D(here::here('reports/smr/resources', 'smr.by_gender.tab.rdata')))
+
+smr_genderM.tab <- c(smr_genderM.tab, smr_despair_genderM.tab)
+smr_genderF.tab <- c(smr_genderF.tab, smr_despair_genderF.tab)
+
+cod_withBreast.rownames <- c(cod_withBreast.names, c('Suicide', 'Overdose'))
+
+# Rename some causes
+cod_withBreast.rownames <- gsub("liver and", "liver, and", cod_withBreast.rownames)
+cod_withBreast.rownames[grep("transportation", cod_withBreast.rownames)] <- "Falls, transportation, and medical accidents"
+
+# Footnote marker
+cod_withBreast.rownames[grep("Other accidents", cod_withBreast.rownames)] <- paste0(
+	cod_withBreast.rownames[grep("Other accidents", cod_withBreast.rownames)], "$^\\sharp$")
+cod_withBreast.rownames[grep("Overdose|Suicide", cod_withBreast.rownames)] <- paste0(
+	cod_withBreast.rownames[grep("Overdose|Suicide", cod_withBreast.rownames)], "$^\\dagger$")
+
+# Indents
+cod_withBreast.rownames[-c(1, 2, 3, 18, 21, 22, 25, 26)] <- paste0(
+	'\\hspace{10pt}', cod_withBreast.rownames[-c(1, 2, 3, 18, 21, 22, 25, 26)])
+
+# Render
+by_gender.tab <- data.frame(
+	'Cause of death' = cod_withBreast.rownames,
+	# Sex M
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod_withBreast.rownames), function(i) {
+				sum(smr_genderM.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+			unlist(
+				lapply(1:length(cod_withBreast.rownames), function(i) {
+					smr_genderM.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod_withBreast.rownames), function(i) {
+					smr_genderM.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+				 ', ',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod_withBreast.rownames), function(i) {
+					smr_genderM.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+				 ')'),
+	# Sex F
+	" " = NA,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod_withBreast.rownames), function(i) {
+				sum(smr_genderF.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+			unlist(
+				lapply(1:length(cod_withBreast.rownames), function(i) {
+					smr_genderF.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod_withBreast.rownames), function(i) {
+					smr_genderF.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+				 ', ',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod_withBreast.rownames), function(i) {
+					smr_genderF.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+				 ')'),
+	check.names = F
+)
+
+by_gender.tab[by_gender.tab[2] == 0, c(3:4)] <- NA
+by_gender.tab[by_gender.tab[6] == 0, c(7:8)] <- NA
+
+
+by_gender.tab %>% xtable(
+	align = 'llrrlcrrl',
+	caption = paste0('Standardized mortality ratios by gender.')
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1, nrow(.)),
+		command = c(
+			paste("\\hline",
+						"& \\multicolumn{3}{c}{Male}",
+						"&& \\multicolumn{3}{c}{Female}",
+						"\\\\ \n",
+						"\\cline{2-4}\\cline{6-8}\n"),
+			paste0(
+				"\\hline \n",
+			"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+		"$^\\flat$ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.}",
+										"\\\\ \n",
+				"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+				"$^\\sharp$ Other accidents includes deaths not due to falls, transportation, and medical accidents as well as deaths due to poisonings of unknown intent. Poisonings of unknown intent were included both in this category and in overdose.} \\\\",
+				"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+				"$^\\dagger$ SMRs for suicide and overdose were calculated for the years 2000 onwards only, using CDC Mortality data as reference rates.}",
+				"\\\\"))
+	),
+	hline.after = c(0, nrow(.))
+)
+
+```
+
+```{r smr.by_race, eval=F}
+smr_raceW.tab <- lapply(cod.names, function(x) {
+	smr(x, ltab_obs[race == "White"], ltab, verbose = F, detail = T)})
+smr_despair_raceW.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & race == "White"], ltab, verbose = F, detail = T)})
+
+smr_raceB.tab <- lapply(cod.names, function(x) {
+	smr(x, ltab_obs[race == "Not white"], ltab, verbose = F, detail = T)})
+smr_despair_raceB.tab <- lapply(c('Suicide', 'Overdose'), function(x) {
+	smr(x, ltab_obs[year >= 2000 & race == "Not white"], ltab, verbose = F, detail = T)})
+
+save(smr_raceW.tab, smr_despair_raceW.tab,
+		 smr_raceB.tab, smr_despair_raceB.tab,
+		 file = to_drive_D(here::here('reports/smr/resources', 'smr.by_race.tab.rdata')))
+```
+
+```{r smr.by_race.tab}
+load(to_drive_D(here::here('reports/smr/resources', 'smr.by_race.tab.rdata')))
+
+smr_raceW.tab <- c(smr_raceW.tab, smr_despair_raceW.tab)
+smr_raceB.tab <- c(smr_raceB.tab, smr_despair_raceB.tab)
+
+# Render
+by_race.tab <- data.frame(
+	'Cause of death' = cod.rownames,
+	# White
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_raceW.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_raceW.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_raceW.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+				 ', ',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_raceW.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+				 ')'),
+	# Black
+	" " = NA,
+	'$N$' = paste0('$', prettyNum(
+		unlist(
+			lapply(1:length(cod.rownames), function(i) {
+				sum(smr_raceB.tab[[i]]$N)})), '\\\\,'), '$'),
+	'SMR' =	formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_raceB.tab[[i]]$smr})), digits = 2), format = "f", digits = 2),
+	'(95\\% CI)$^\\flat$' = paste0( ' (',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_raceB.tab[[i]]$smr.lower2.5})), digits = 2), format = "f", digits = 2),
+				 ', ',
+		formatC(round(
+			unlist(
+				lapply(1:length(cod.rownames), function(i) {
+					smr_raceB.tab[[i]]$smr.upper2.5})), digits = 2), format = "f", digits = 2),
+				 ')'),
+	check.names = F
+) 
+
+by_race.tab %>% xtable(
+	align = 'llrrlcrrl',
+	caption = paste0('Standardized mortality ratios by race.')
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1, nrow(.)),
+		command = c(
+			paste("\\hline",
+						"& \\multicolumn{3}{c}{White$^\\diamondsuit$}",
+						"&& \\multicolumn{3}{c}{African American}",
+										"\\\\ \n",
+										"\\cline{2-4}\\cline{6-8}\n"),
+			paste0(
+				"\\hline \n",
+				"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+				'$^\\diamondsuit$ Individuals of race "Unknown" were included into the White category.}',
+				"\\\\",
+			"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+		"$^\\flat$ Variance estimates assume Poisson-distributed rates in the observed population. Reference rates were assumed to be parameters.}",
+										"\\\\",
+				"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+		"$^\\sharp$ Other accidents includes deaths not due to falls, transportation, and medical accidents as well as deaths due to poisonings of unknown intent. Poisonings of unknown intent were included both in this category and in overdose.}",
+										"\\\\",
+		"\\multicolumn{", ncol(.), "}{p{0.95\\textwidth}}{\\footnotesize",
+						 "$^\\dagger$ SMRs for suicide and overdose were calculated for the years 2000 onwards only, using CDC Mortality data as reference rates.}",
+										"\\\\"))
+	),
+	hline.after = c(0, nrow(.))
+)
+
+```
+
+
+```{r allcauses, fig.cap='Year of birth and year of death for individuals who died of \\emph{all causes}.', fig.width=5, fig.height=4, eval=F}
+cohort[!is.na(yod) & plant != 9] %>% melt(
+	id.vars = c('studyno', 'plant'),
+	measure.vars = c('yob', 'yod')
+) %>%	ggplot(aes(x = value + 1900)) +
+	geom_histogram(bins = 35) +
+	facet_grid(plant ~ variable,
+						 labeller = labeller(
+						 	plant = c('1' = 'Gear & Axle', '2' = 'HydraMatic', '3' = 'Saginaw'),
+						 	variable = c('yob' = 'Year of birth', 'yod' = 'Year of death'))) +
+	xlab("Year") +
+	mytheme
+
+```
+
+
+```{r naturalcauses, fig.cap='Year of birth and year of death for individuals who died of \\emph{natural causes}.', fig.width=5, fig.height=4, eval=F}
+cohort[studyno %in% ltab_obs[`All natural causes` == 1,unique(studyno)] &
+			 	plant != 9] %>% melt(
+	id.vars = c('studyno', 'plant'),
+	measure.vars = c('yob', 'yod')
+) %>%	ggplot(aes(x = value + 1900)) +
+	geom_histogram(bins = 35) +
+	facet_grid(plant ~ variable,
+						 labeller = labeller(
+						 	plant = c('1' = 'Gear & Axle', '2' = 'HydraMatic', '3' = 'Saginaw'),
+						 	variable = c('yob' = 'Year of birth', 'yod' = 'Year of death'))) +
+	xlab("Year") +
+	mytheme
+
+```
+
+\clearpage\blandscape
+
+```{r by_followup, include=F}
+# Extract for tabular display
+# causes.names <- c('All causes', 'All natural causes', 'All cancers',
+# 		 	'All nonmalignant respiratory diseases', 'All heart diseases',
+# 		 	'All external causes')
+causes.names <- c(
+	# 'Lung cancer', 
+	'Esophageal cancer', 'Stomach cancer',
+	'Rectal cancer',
+	# 'Skin cancer', 'Leukemia',
+	"Laryngeal cancer",
+	"Pancreatic cancer")
+by_followup.names <- paste0(gsub(' ', '_', causes.names), '.by_followup')
+# causes.colnames <- c('All causes', 'Natural causes', 'Cancers',
+# 		 	'Respiratory dis.', 'Heart dis.',
+# 		 	'External causes')
+# Extract for tabular display
+causes.colnames <- causes.names
+
+```
+
+```{r, eval=F}
+# Run stratification by followup
+lapply(1:length(cod.names),
+			 function(i) {
+			 	assign(paste0(gsub(' ', '_', cod.names), '.by_followup')[i],
+			 				 by_followup(cod.names[i],
+			 				 						lower = c(0, seq(10, 40, by = 10)),
+			 				 						upper = c(seq(10, 40, by = 10), Inf)),
+			 				 inherits = T)
+			 })
+save(list = paste0(gsub(' ', '_', cod.names), '.by_followup'),
+		 file = to_drive_D(here::here("reports/smr/resources/", "by_followup.rdata")))
+```
+
+```{r by_followup.tab, include=T}
+load(to_drive_D(here::here("reports/smr/resources/", "by_followup.rdata")))
+
+by_followup.tab <- cbind(
+	c(paste0('$', get(by_followup.names[[1]])$bound[1:7], '$'),
+		'Total'),
+do.call(cbind,
+				lapply(1:length(by_followup.names), function(i) {
+					cbind(NA,
+								get(by_followup.names[[i]])$smr,
+								get(by_followup.names[[i]])$N)
+				})))
+
+by_followup.tab <- as.data.frame(by_followup.tab)
+
+# Pretty num
+by_followup.tab[,seq(3, ncol(by_followup.tab),3)] <-
+	apply(by_followup.tab[,seq(3, ncol(by_followup.tab),3)], 2, function(x) {
+		round(as.numeric(x), 2)
+	})
+
+by_followup.tab[,seq(4, ncol(by_followup.tab),3)] <-
+	apply(by_followup.tab[,seq(4, ncol(by_followup.tab),3)], 2, prettyNum, ",")
+
+# Remove SMRs where there are no observed deaths
+for (i in seq(4, ncol(by_followup.tab), 3)) {
+	by_followup.tab[by_followup.tab[i] == 0, i - 1] <- NA
+}
+
+names(by_followup.tab) <- c(" ", rep(c(" ", "SMR", "$N$"), ncol(by_followup.tab)/ 3))
+
+j <- seq(2, ncol(by_followup.tab), 3)
+for (i in 1:length(j)) {
+	for (k in j[i]:(j[i] + 2)){
+	label(by_followup.tab[,k]) <- causes.colnames[i]
+	}
+}
+
+# Render table
+by_followup.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios by years since start of follow-up.",
+	align = paste0("ll", paste0(rep("c", ncol(.) - 1), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste("\\hline",
+										"\\multirow{2}{*}{Years of follow-up}",
+										paste0("& &\\multicolumn{2}{C{0.1\\linewidth}}{",
+													 causes.colnames,"}",
+													 collapse = ' '),
+										"\\\\ \n",
+										paste0("\\cline{", seq(3, ncol(.), 3), "-", seq(4, ncol(.), 3), "}", collapse = " "),
+										"\n")
+	),
+	hline.after = c(0, nrow(.))
+)
+```
+
+```{r by_entryyear, include=F}
+# Extract for tabular display
+by_entryyear.names <- paste0(gsub(' ', '_', causes.names), '.by_entryyear')
+```
+
+```{r, eval=F}
+# Run stratification by entry year
+lapply(1:length(cod.names),
+			 function(i) {
+			 	assign(paste0(gsub(' ', '_', cod.names), '.by_entryyear')[i],
+			 				 by_entryyear(
+			 				 	cod.names[i],
+			 				 	lower = c(seq(1940, 1970, by = 10)),
+												 upper = c(seq(1950, 1970, by = 10), Inf)),
+			 				 inherits = T)
+			 })
+
+save(list = paste0(gsub(' ', '_', cod.names), '.by_entryyear'),
+		 file = to_drive_D(here::here("reports/smr/resources/", "by_entryyear.rdata")))
+```
+
+```{r by_entryyear.tab, include=T}
+load(to_drive_D(here::here("reports/smr/resources/", "by_entryyear.rdata")))
+
+by_entryyear.tab <- cbind(
+	gsub(' to ', '--', get(by_entryyear.names[[1]])$bound),
+do.call(cbind,
+				lapply(1:length(by_entryyear.names), function(i) {
+					cbind(NA,
+								get(by_entryyear.names[[i]])$smr,
+								get(by_entryyear.names[[i]])$N)
+				})))
+
+by_entryyear.tab <- as.data.frame(by_entryyear.tab)
+
+# Pretty num
+by_entryyear.tab[,seq(3, ncol(by_entryyear.tab),3)] <-
+	apply(by_entryyear.tab[,seq(3, ncol(by_entryyear.tab),3)], 2, function(x) {
+		round(as.numeric(x), 2)
+	})
+
+by_entryyear.tab[,seq(4, ncol(by_entryyear.tab),3)] <-
+	apply(by_entryyear.tab[,seq(4, ncol(by_entryyear.tab),3)], 2, prettyNum, ",")
+
+# Remove SMRs where there are no observed deaths
+for (i in seq(4, ncol(by_entryyear.tab), 3)) {
+	by_entryyear.tab[by_entryyear.tab[i] == 0, i - 1] <- NA
+}
+
+names(by_entryyear.tab) <- c(" ", rep(c(" ", "SMR", "$N$"), ncol(by_entryyear.tab)/ 3))
+
+j <- seq(2, ncol(by_entryyear.tab), 3)
+for (i in 1:length(j)) {
+	for (k in j[i]:(j[i] + 2)){
+	label(by_entryyear.tab[,k]) <- causes.colnames[i]
+	}
+}
+
+# Render table
+by_entryyear.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios by entry year.",
+	align = paste0("ll", paste0(rep("c", ncol(.) - 1), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste("\\hline",
+										"\\multirow{2}{*}{Year of entry}",
+									paste0("& &\\multicolumn{2}{C{0.1\\linewidth}}{",
+													 causes.colnames,"}",
+													 collapse = ' '),
+										"\\\\ \n",
+										paste0("\\cline{", seq(3, ncol(.), 3), "-", seq(4, ncol(.), 3), "}", collapse = " "),
+										"\n")
+	),
+	hline.after = c(0, nrow(.))
+)
+```
+
+
+```{r by_calendar, include=F}
+by_calendar.names <- paste0(gsub(' ', '_', causes.names), '.by_calendar')
+```
+
+```{r, eval=F}
+# Run stratification by calendar period
+lapply(1:length(cod.names),
+			 function(i) {
+			 	assign(paste0(gsub(' ', '_', cod.names), '.by_calendar')[i],
+			 				 by_calendar(
+			 				 	cod.names[i],
+			 				 	lower = c(seq(1940, 2000, by = 15)),
+												upper = c(seq(1955, 2000, by = 15), Inf)),
+			 				 inherits = T)
+			 })
+
+save(list = paste0(gsub(' ', '_', cod.names), '.by_calendar'),
+		 file = to_drive_D(here::here("reports/smr/resources/", "by_calendar.rdata")))
+```
+
+```{r by_calendar.tab, include=T}
+load(to_drive_D(here::here("reports/smr/resources/", "by_calendar.rdata")))
+
+by_calendar.tab <- cbind(
+	gsub(' to ', '--', get(by_calendar.names[[1]])$bound),
+do.call(cbind,
+				lapply(1:length(by_calendar.names), function(i) {
+					cbind(NA,
+								get(by_calendar.names[[i]])$smr,
+								get(by_calendar.names[[i]])$N)
+				})))
+
+by_calendar.tab <- as.data.frame(by_calendar.tab)
+
+# Pretty num
+by_calendar.tab[,seq(3, ncol(by_calendar.tab),3)] <-
+	apply(by_calendar.tab[,seq(3, ncol(by_calendar.tab),3)], 2, function(x) {
+		round(as.numeric(x), 2)
+	})
+
+by_calendar.tab[,seq(4, ncol(by_calendar.tab),3)] <-
+	apply(by_calendar.tab[,seq(4, ncol(by_calendar.tab),3)], 2, prettyNum, ",")
+
+# Remove SMRs where there are no observed deaths
+for (i in seq(4, ncol(by_calendar.tab), 3)) {
+	by_calendar.tab[by_calendar.tab[i] == 0, i - 1] <- NA
+}
+
+names(by_calendar.tab) <- c(" ", rep(c(" ", "SMR", "$N$"), ncol(by_calendar.tab)/ 3))
+
+j <- seq(2, ncol(by_calendar.tab), 3)
+for (i in 1:length(j)) {
+	for (k in j[i]:(j[i] + 2)){
+	label(by_calendar.tab[,k]) <- causes.colnames[i]
+	}
+}
+
+
+# Render table
+by_calendar.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios by calendar period.",
+	align = paste0("ll", paste0(rep("c", ncol(.) - 1), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste("\\hline",
+										"\\multirow{2}{*}{Calendar period}",
+										paste0("& &\\multicolumn{2}{C{0.1\\linewidth}}{",
+													 causes.colnames,"}",
+													 collapse = ' '),
+										"\\\\ \n",
+										paste0("\\cline{", seq(3, ncol(.), 3), "-", seq(4, ncol(.), 3), "}", collapse = " "),
+										"\n")
+	),
+	hline.after = c(0, nrow(.))
+)
+```
+
+\clearpage
+
+\vspace*{1cm}
+
+```{r by_followup_age, eval=F}
+# Run double stratification
+All_causes.by_followup_age <- by_followup_age(
+	lower.followup = c(0, seq(15, 60, by = 15)),
+	upper.followup = c(seq(15, 60, by = 15), Inf)
+)
+save(All_causes.by_followup_age,
+		 file = to_drive_D(here::here("reports/smr/resources/", "All_causes.by_followup_age.rdata")))
+
+```
+
+```{r by_followup_age.tab}
+load(to_drive_D(here::here("reports/smr/resources/", "All_causes.by_followup_age.rdata")))
+
+# Extract for tabular display
+All_causes.by_followup_age.tab <- do.call(
+	cbind,
+	lapply(1:ncol(All_causes.by_followup_age$smr), function(i) {
+		cbind(rep(NA, nrow(All_causes.by_followup_age$smr)),
+					All_causes.by_followup_age$smr[i],
+					All_causes.by_followup_age$N[i]
+					)
+	}))
+
+
+# Remove SMRs where there are no observed deaths
+noN <- All_causes.by_followup_age.tab[seq(2, ncol(All_causes.by_followup_age.tab), by = 3)] == 0
+All_causes.by_followup_age.tab[seq(1, ncol(All_causes.by_followup_age.tab), by = 3)][noN] <- NaN
+
+
+# Add age categories
+All_causes.by_followup_age.tab <- cbind(
+		rownames(All_causes.by_followup_age$smr),
+	All_causes.by_followup_age.tab,
+	stringsAsFactors = F)
+
+# Math mode for LaTex
+m <- nrow(All_causes.by_followup_age.tab)
+All_causes.by_followup_age.tab[m - 1,1] <- "60+"
+All_causes.by_followup_age.tab[-m,1] <- paste0('$', All_causes.by_followup_age.tab[-m,1], '$')
+
+# Round SMRs
+All_causes.by_followup_age.tab[seq(3, ncol(All_causes.by_followup_age.tab), 3)] <- apply(
+	All_causes.by_followup_age.tab[seq(3, ncol(All_causes.by_followup_age.tab), 3)], 2, round, 2
+)
+
+# Pretty num
+All_causes.by_followup_age.tab[,seq(4,
+										 ncol(All_causes.by_followup_age.tab),3)] <-
+	apply(All_causes.by_followup_age.tab[,seq(4,
+										 ncol(All_causes.by_followup_age.tab),3)], 2, prettyNum, ",")
+
+
+# Pretty column names (stat)
+colnames(All_causes.by_followup_age.tab)[-1] <- c(
+	rep(c(' ', 'SMR', '$N$'), ncol(All_causes.by_followup_age$smr)))
+colnames(All_causes.by_followup_age.tab)[1] <- "Age at entry"
+
+# Render table
+All_causes.by_followup_age.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios for deaths due to \\emph{all causes} by age at entry into follow-up and by number of years of follow-up.",
+	align = paste0("cl", paste0(rep("lcc", (ncol(.) - 1)/3), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste0("\\hline ",
+										"& &",
+										"\\multicolumn{", ncol(.) - 2, "}{c}{Years of follow-up} ",
+										"\\\\ \n",
+										"& &",
+										paste0("\\multicolumn{2}{c}{$",
+													 colnames(All_causes.by_followup_age$smr)[-ncol(
+													 	All_causes.by_followup_age$smr
+													 )],
+													 "$}", collapse = ' && '),
+										" && \\multicolumn{2}{c}{Total} ",
+										"\\\\ \n ",
+										"\\cline{3-4}\\cline{6-7}\\cline{9-10}\\cline{12-13}\\cline{15-16}\\cline{18-19} \n"
+										)
+	),
+	hline.after = c(0, nrow(.))
+)
+
+
+```
+
+\vspace{1cm}
+
+```{r by_followup_year, eval=F}
+# Run double stratification
+All_causes.by_followup_year <- by_followup_year(
+	lower.followup = c(0, seq(15, 60, by = 15)),
+	upper.followup = c(seq(15, 60, by = 15), Inf)
+)
+save(All_causes.by_followup_year,
+		 file = to_drive_D(here::here("reports/smr/resources/", "All_causes.by_followup_year.rdata")))
+
+```
+
+
+```{r by_followup_year.tab}
+load(to_drive_D(here::here("reports/smr/resources/", "All_causes.by_followup_year.rdata")))
+
+# Extract for tabular display
+All_causes.by_followup_year.tab <- do.call(
+	cbind,
+	lapply(1:ncol(All_causes.by_followup_year$smr), function(i) {
+		cbind(rep(NA, nrow(All_causes.by_followup_year$smr)),
+					All_causes.by_followup_year$smr[i],
+					All_causes.by_followup_year$N[i]
+					)
+	}))
+
+
+# Remove SMRs where there are no observed deaths
+noN <- All_causes.by_followup_year.tab[seq(2, ncol(All_causes.by_followup_year.tab), by = 3)] == 0
+All_causes.by_followup_year.tab[seq(1, ncol(All_causes.by_followup_year.tab), by = 3)][noN] <- NaN
+
+
+# Add year categories
+All_causes.by_followup_year.tab <- cbind(
+		gsub(" to ", "--", rownames(All_causes.by_followup_year$smr)),
+	All_causes.by_followup_year.tab,
+	stringsAsFactors = F)
+
+# Round SMRs
+All_causes.by_followup_year.tab[seq(3, ncol(All_causes.by_followup_year.tab), 3)] <- apply(
+	All_causes.by_followup_year.tab[seq(3, ncol(All_causes.by_followup_year.tab), 3)], 2, round, 2
+)
+
+# Pretty num
+All_causes.by_followup_year.tab[,seq(4,
+										 ncol(All_causes.by_followup_year.tab),3)] <-
+	apply(All_causes.by_followup_year.tab[,seq(4,
+										 ncol(All_causes.by_followup_year.tab),3)], 2, prettyNum, ",")
+
+# Pretty column names (stat)
+colnames(All_causes.by_followup_year.tab)[-1] <- c(
+	rep(c(' ', 'SMR', '$N$'), ncol(All_causes.by_followup_year$smr)))
+colnames(All_causes.by_followup_year.tab)[1] <- "Year of entry"
+
+# Render table
+All_causes.by_followup_year.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios for deaths due to \\emph{all causes} by calendar year of entry into follow-up and by number of years of follow-up.",
+	align = paste0("cl", paste0(rep("lcc", (ncol(.) - 1)/3), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste0("\\hline ",
+										"& &",
+										"\\multicolumn{", ncol(.) - 2, "}{c}{Years of follow-up} ",
+										"\\\\ \n",
+										"& &",
+										paste0("\\multicolumn{2}{c}{$",
+													 colnames(All_causes.by_followup_year$smr)[-ncol(
+													 	All_causes.by_followup_year$smr
+													 )],
+													 "$}", collapse = ' && '),
+										"&& \\multicolumn{2}{c}{Total} ",
+										"\\\\ \n ",
+										"\\cline{3-4}\\cline{6-7}\\cline{9-10}\\cline{12-13}\\cline{15-16}\\cline{18-19} \n"
+										)
+	),
+	hline.after = c(0, nrow(.))
+)
+
+
+```
+
+\pagebreak
+\vspace*{1cm}
+
+```{r external_by_followup_age, eval=F}
+# Run double stratification
+All_external_causes.by_followup_age <- by_followup_age(
+	outcome = 'All external causes',
+	lower.followup = c(0, seq(15, 60, by = 15)),
+	upper.followup = c(seq(15, 60, by = 15), Inf)
+)
+save(All_external_causes.by_followup_age,
+		 file = to_drive_D(here::here("reports/smr/resources/", "All_external_causes.by_followup_age.rdata")))
+```
+
+```{r external_by_followup_age.tab}
+load(to_drive_D(here::here("reports/smr/resources/", "All_external_causes.by_followup_age.rdata")))
+
+# Extract for tabular display
+All_external_causes.by_followup_age.tab <- do.call(
+	cbind,
+	lapply(1:ncol(All_external_causes.by_followup_age$smr), function(i) {
+		cbind(rep(NA, nrow(All_external_causes.by_followup_age$smr)),
+					All_external_causes.by_followup_age$smr[i],
+					All_external_causes.by_followup_age$N[i]
+					)
+	}))
+
+
+# Remove SMRs where there are no observed deaths
+noN <- All_external_causes.by_followup_age.tab[seq(2, ncol(All_external_causes.by_followup_age.tab), by = 3)] == 0
+All_external_causes.by_followup_age.tab[seq(1, ncol(All_external_causes.by_followup_age.tab), by = 3)][noN] <- NaN
+
+
+# Add age categories
+All_external_causes.by_followup_age.tab <- cbind(
+		rownames(All_external_causes.by_followup_age$smr),
+	All_external_causes.by_followup_age.tab,
+	stringsAsFactors = F)
+
+# Math mode for LaTex
+m <- nrow(All_external_causes.by_followup_age.tab)
+All_external_causes.by_followup_age.tab[m - 1,1] <- "60+"
+All_external_causes.by_followup_age.tab[-m,1] <- paste0('$', All_external_causes.by_followup_age.tab[-m,1], '$')
+
+# Round SMRs
+All_external_causes.by_followup_age.tab[seq(3, ncol(All_external_causes.by_followup_age.tab), 3)] <- apply(
+	All_external_causes.by_followup_age.tab[seq(3, ncol(All_external_causes.by_followup_age.tab), 3)], 2, round, 2
+)
+
+# Pretty num
+All_external_causes.by_followup_age.tab[,seq(4,
+										 ncol(All_external_causes.by_followup_age.tab),3)] <-
+	apply(All_external_causes.by_followup_age.tab[,seq(4,
+										 ncol(All_external_causes.by_followup_age.tab),3)], 2, prettyNum, ",")
+
+# Pretty column names (stat)
+colnames(All_external_causes.by_followup_age.tab)[-1] <- c(
+	rep(c(' ', 'SMR', '$N$'), ncol(All_external_causes.by_followup_age$smr)))
+colnames(All_external_causes.by_followup_age.tab)[1] <- "Age at entry"
+
+# Render table
+All_external_causes.by_followup_age.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios for deaths due to \\emph{all external causes} by age at entry into follow-up and by number of years of follow-up.",
+	align = paste0("cl", paste0(rep("lcc", (ncol(.) - 1)/3), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste0("\\hline ",
+										"&& ",
+										"\\multicolumn{", ncol(.) - 2, "}{c}{Years of follow-up} ",
+										"\\\\ \n",
+										"&& ",
+										paste0("\\multicolumn{2}{c}{$",
+													 colnames(All_external_causes.by_followup_age$smr)[-ncol(
+													 	All_external_causes.by_followup_age$smr
+													 )],
+													 "$}", collapse = ' && '),
+										"&& \\multicolumn{2}{c}{Total} ",
+										"\\\\ \n ",
+										"\\cline{3-4}\\cline{6-7}\\cline{9-10}\\cline{12-13}\\cline{15-16}\\cline{18-19}"
+										)
+	),
+	hline.after = c(0, nrow(.))
+)
+
+
+```
+
+\vspace{1cm}
+
+```{r external_by_followup_year, eval=F}
+# Run double stratification
+All_external_causes.by_followup_year <- by_followup_year(
+	outcome = 'All external causes',
+	lower.followup = c(0, seq(15, 60, by = 15)),
+	upper.followup = c(seq(15, 60, by = 15), Inf)
+)
+save(All_external_causes.by_followup_year,
+		 file = to_drive_D(here::here("reports/smr/resources/", "All_external_causes.by_followup_year.rdata")))
+
+```
+
+```{r external_by_followup_year.tab}
+load(to_drive_D(here::here("reports/smr/resources/", "All_external_causes.by_followup_year.rdata")))
+
+# Extract for tabular display
+All_external_causes.by_followup_year.tab <- do.call(
+	cbind,
+	lapply(1:ncol(All_external_causes.by_followup_year$smr), function(i) {
+		cbind(rep(NA, nrow(All_external_causes.by_followup_year$smr)),
+		All_external_causes.by_followup_year$smr[i],
+					All_external_causes.by_followup_year$N[i])
+	}))
+
+
+# Remove SMRs where there are no observed deaths
+noN <- All_external_causes.by_followup_year.tab[seq(2, ncol(All_external_causes.by_followup_year.tab), by = 3)] == 0
+All_external_causes.by_followup_year.tab[seq(1, ncol(All_external_causes.by_followup_year.tab), by = 3)][noN] <- NaN
+
+
+# Add year categories
+All_external_causes.by_followup_year.tab <- cbind(
+		gsub(" to ", "--", rownames(All_external_causes.by_followup_year$smr)),
+	All_external_causes.by_followup_year.tab,
+	stringsAsFactors = F)
+
+# Round SMRs
+All_external_causes.by_followup_year.tab[seq(3, ncol(All_external_causes.by_followup_year.tab), 3)] <- apply(
+	All_external_causes.by_followup_year.tab[seq(3, ncol(All_external_causes.by_followup_year.tab), 3)], 2, round, 2
+)
+
+# Pretty num
+All_external_causes.by_followup_year.tab[,seq(4,
+										 ncol(All_external_causes.by_followup_year.tab),3)] <-
+	apply(All_external_causes.by_followup_year.tab[,seq(4,
+										 ncol(All_external_causes.by_followup_year.tab),3)], 2, prettyNum, ",")
+
+# Pretty column names (stat)
+colnames(All_external_causes.by_followup_year.tab)[-1] <- c(
+	rep(c(' ', 'SMR', '$N$'), ncol(All_external_causes.by_followup_year$smr)))
+colnames(All_external_causes.by_followup_year.tab)[1] <- "Year of entry"
+
+# Render table
+All_external_causes.by_followup_year.tab %>% apply(2, as.character) %>% xtable(
+	caption = "Standardized mortality ratios for deaths due to \\emph{all external causes} by calendar year of entry into follow-up and by number of years of follow-up.",
+	align = paste0("cl", paste0(rep("lcc", (ncol(.) - 1)/3), collapse = ''))
+) %>% print.xtable(
+	add.to.row = list(
+		pos = list(-1),
+		command = paste0("\\hline ",
+										"&& ",
+										"\\multicolumn{", ncol(.) - 2, "}{c}{Years of follow-up} ",
+										"\\\\ \n",
+										"&& ",
+										paste0("\\multicolumn{2}{c}{$",
+													 colnames(All_external_causes.by_followup_year$smr)[-ncol(
+													 	All_external_causes.by_followup_year$smr
+													 )],
+													 "$}", collapse = ' && '),
+										"&& \\multicolumn{2}{c}{Total} ",
+										"\\\\ \n ",
+										"\\cline{3-4}\\cline{6-7}\\cline{9-10}\\cline{12-13}\\cline{15-16}\\cline{18-19}"
+										)
+	),
+	hline.after = c(0, nrow(.))
+)
+
+
+```
+
+\elandscape
+
+# Expected and observed counts
+
+<!-- Thought: In the presence of healthy worker selection bias, we would expect the SMR to be less than 1 early in follow-up, then creep slowly towards 1 and possibly above 1 as the study population experiences the effect of toxic workplace exposures. If a subset of the study population enjoyed a particularly strong healthy worker selection bias, then then this subset may outlive their more sucseptible counterprts, resulting in a reduction of the SMR as the length of follow-up gets very long. -->
+
+```{r}
+rate.ggplot <- function(outcome,
+												obs = as.data.frame(ltab_obs),
+												ref = as.data.frame(ltab),
+												title = NULL
+												) {
+	obs <- as.data.table(obs)
+	ref <- as.data.table(ref)
+	
+	obs <- obs[,
+						 .(
+						 	count = sum(get(outcome)),
+						 	rate = sum(get(outcome)) / sum(py),
+						 	py = sum(py)
+						 ),
+						 by = .(sex,
+						 			 race,
+						 			 calendar,
+						 			 age)]
+	exp <- ref[cod == outcome]
+	exp <- exp[obs, .(
+		sex,
+		race,
+		calendar,
+		age,
+		ref.rate = rate,
+		obs.py = py,
+		exp.count = rate * py,
+		count = count
+	),
+	on = .(race, sex, age, calendar)]
+	
+	exp[, `:=`(age = as.numeric(substr(age, 2, unlist(
+		gregexpr(",", age)
+	) - 1)),
+	calendar = as.numeric(substr(calendar, 2, unlist(
+		gregexpr(",", calendar)
+	) - 1)))]
+	
+	exp.calendar <- exp[,.(
+		Observed = sum(count),
+		Expected = sum(exp.count)
+	), by = .(calendar)]
+	
+	exp.calendar$timescale <- 'calendar'
+	names(exp.calendar)[1] <- 'time'
+	
+	exp.age <- exp[,.(
+		Observed = sum(count),
+		Expected = sum(exp.count),
+		timescale = 'age'
+	), by = .(age)]
+	
+	exp.age$timescale <- 'age'
+	names(exp.age)[1] <- "time"
+	
+	smr.calendar <- exp[,.(
+		Stat = sum(count)/sum(exp.count)),
+						 by = .(calendar)]
+	smr.calendar$timescale <- "calendar"
+	names(smr.calendar)[1] <- 'time'
+	
+	smr.age <- exp[,.(
+		Stat = sum(count)/sum(exp.count)),
+						 by = .(age)]
+	smr.age$timescale <- 'age'
+	names(smr.age)[1] <- 'time'
+	
+	smr <- rbindlist(list(smr.calendar,
+												smr.age))
+	
+	smr$Population <- "SMR"
+	smr <- smr[Stat != 0]
+		
+	exp <- rbindlist(list(
+		exp.calendar, exp.age))
+	
+	exp <- melt(exp,
+							measure.vars = c('Observed', 'Expected'),
+							value.name = 'Stat',
+							variable.name = 'Population')
+
+	smr.cf <- max(exp$Stat, na.rm = T)/ 2
+	
+	smr$Stat <- smr$Stat * smr.cf
+	
+	df <- rbindlist(list(exp, smr),
+									use.names = T)
+	
+
+	df %>% ggplot(aes(
+		x = time,
+		y = Stat,
+		linetype = Population
+	)) +
+		facet_grid( ~ timescale,
+								scales = 'free',
+								labeller = labeller(timescale = c(age = 'Age', calendar = "Calendar"))
+								) +
+		geom_line() +
+		scale_y_continuous(
+			sec.axis = sec_axis(~ . / smr.cf,
+													name = "SMR")
+		) +
+		# geom_smooth(method = 'loess', size = 0.7, se = F) +
+		labs(x = '',
+				 y = 'Count',
+				 linetype = "") +
+		{if (is.null(title)) {ggtitle(outcome)} else
+			ggtitle(title)} +
+		mytheme
+}
+```
+
+```{r, fig.cap="Change in the standardized mortality ratio for deaths due to all causes over age and calendar time."}
+rate.ggplot("All causes")
+
+```
+
+
+```{r, fig.cap="Change in the standardized mortality ratio for deaths due to cancers over age and calendar time."}
+rate.ggplot("All cancers")
+
+```
+
+```{r, fig.cap="Change in the standardized mortality ratio for deaths due to nonmalignant respiratory disease over age and calendar time."}
+rate.ggplot("All nonmalignant respiratory diseases")
+
+```
+
+```{r, fig.cap="Change in the standardized mortality ratio for deaths due to heart disease over age and calendar time."}
+rate.ggplot("All heart diseases")
+
+```
+
+```{r, fig.cap="Change in the standardized mortality ratio for deaths due to external causes over age and calendar time."}
+rate.ggplot("All external causes")
+
+```
+
+```{r, fig.cap="Change in the standardized mortality ratio for deaths due to other accidents over age and calendar time."}
+rate.ggplot("Other accidents")
+
+```

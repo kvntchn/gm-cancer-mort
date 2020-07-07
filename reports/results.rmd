@@ -64,8 +64,8 @@ upper.percentile <- 0.99
 # rm(list = ls()[-grep("cohort$", ls())])
 
 if (!('cohort_analytic' %in% ls())) {
-	source(here::here('cancer mortality', 'modeling.R'))
-	load(here::here('cancer mortality', 'resources/coxph.rdata'))
+	source(here::here('modeling.R'))
+	load(here::here('resources/coxph.rdata'))
 	names(outcome) <- 1:length(outcome)
 }
 

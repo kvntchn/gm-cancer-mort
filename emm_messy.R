@@ -14,7 +14,7 @@ library(survival)
 exposure.lag <- 30
 
 if (!('cohort_analytic' %in% ls())) {
-	source(here::here('modeling', 'modeling.R'))
+	source(here::here('modeling.R'))
 	names(outcome) <- outcome
 }
 
@@ -41,7 +41,7 @@ lapply(
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
 				 file = to_drive_D(here::here(
-				 	paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Straight'),
+				 	paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Straight'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -68,7 +68,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol500.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Soluble'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Soluble'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -95,7 +95,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol500.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Synthetic'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Synthetic'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -123,7 +123,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol10.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Straight'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Straight'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -150,7 +150,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol10.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Soluble'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Soluble'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -177,7 +177,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol10.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Synthetic'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Synthetic'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -205,7 +205,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol5.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Straight'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Straight'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -232,7 +232,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol5.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Soluble'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Soluble'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -259,7 +259,7 @@ lapply(
 	paste0(gsub(" ", "_", outcome), "_sol5.coxph"),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/clean_referent/Synthetic'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/clean_referent/Synthetic'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -286,7 +286,7 @@ lapply(
 		paste0(gsub(" ", "_", outcome), "_sol5.coxph")),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/Straight'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/Intxn/Straight'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -312,7 +312,7 @@ lapply(
 		paste0(gsub(" ", "_", outcome), "_sol5.coxph")),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/Soluble'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/Intxn/Soluble'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}
@@ -338,7 +338,7 @@ lapply(
 		paste0(gsub(" ", "_", outcome), "_sol5.coxph")),
 	function(tmp.coxph) {
 		save(list = tmp.coxph,
-				 file = to_drive_D(here::here(paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/Synthetic'),
+				 file = to_drive_D(here::here(paste0('resources/emm/lag ', exposure.lag, '/Intxn/Synthetic'),
 				 						paste0(tmp.coxph, '.rdata')))
 				 )
 	}

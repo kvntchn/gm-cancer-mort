@@ -5,7 +5,7 @@ library(here)
 source(here::here('wrangling', '00-my-theme.R'))
 
 if (sum(grepl('.cohort_prepped', ls())) == 0) {
-	source(here::here('mortality modeling', 'modeling.R'))
+	source(here::here('modeling.R'))
 	names(outcome) <- 1:length(outcome)
 }
 
@@ -28,9 +28,9 @@ upper.percentile <- 0.99
 # # spline.which <- "Soluble"
 # # spline.which <- "Straight"
 #
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
 #
 # termplot.which <- ifelse(spline.which == "Soluble", 5,
 # 												 ifelse(spline.which == "Straight", 6, 7))
@@ -223,9 +223,9 @@ upper.percentile <- 0.99
 # # spline.which <- "Soluble"
 # # spline.which <- "Straight"
 #
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
 #
 # termplot.which <- ifelse(spline.which == "Soluble", 5,
 # 												 ifelse(spline.which == "Straight", 6, 7))
@@ -416,9 +416,9 @@ upper.percentile <- 0.99
 # # spline.which <- "Soluble"
 # # spline.which <- "Straight"
 #
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
 #
 # termplot.which <- ifelse(spline.which == "Soluble", 5,
 # 												 ifelse(spline.which == "Straight", 6, 7))
@@ -613,9 +613,9 @@ upper.percentile <- 0.99
 # spline.which <- "Soluble"
 # # spline.which <- "Straight"
 #
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
-# load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
+# load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
 #
 # termplot.which <- ifelse(spline.which == "Soluble", 5,
 # 												 ifelse(spline.which == "Straight", 6, 7))
@@ -807,9 +807,9 @@ outcome <- "Stomach cancer"
 # spline.which <- "Soluble"
 spline.which <- "Straight"
 
-load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
-load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
-load(to_drive_D(here::here('mortality modeling', paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
+load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df0.coxph.Rdata"))))
+load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df2.coxph.Rdata"))))
+load(to_drive_D(here::here(paste0("resources/", gsub(" ", "_", outcome), "_splined_", tolower(spline.which), "_df3.coxph.Rdata"))))
 
 termplot.which <- ifelse(spline.which == "Soluble", 5,
 												 ifelse(spline.which == "Straight", 6, 7))

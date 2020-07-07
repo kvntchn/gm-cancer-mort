@@ -1,12 +1,12 @@
 ---
-title: "UAW-GM Cohort Study"
+# title: "UAW-GM Cohort Study"
 # author: "Kevin Chen"
 # subtitle: "Tables and figures"
 date: \today
 output:
   # word_document
   pdf_document:
-    # latex_engine: lualatex
+    latex_engine: lualatex
     includes:
       in_header: '~/HeadRs/StatHead.sty'
 # bibliography: ./../../references/gm.bib
@@ -25,7 +25,8 @@ knitr::opts_chunk$set(echo = F,
 											# cache = F,
 											fig.align = 'center',
 											fig.pos = 'H',
-											results = 'asis')
+											results = 'asis',
+											fig.height = 6)
 
 library(here)
 library(pander)
@@ -89,7 +90,7 @@ exposure.lag <- 21
 ```{r tab1, eval=F}
 # rm(cohort_analytic)
 if (!('cohort_analytic' %in% ls())) {
-	source(here::here('cancer mortality', 'modeling.R'))
+	source(here::here('modeling.R'))
 }
 
 source(here::here('reports', 'table1.R'))
@@ -102,7 +103,7 @@ assign(paste0('lag', gsub(" ", "", exposure.lag), ".tab1"),
 			 				 exposure_lag = exposure.lag))
 
 saveRDS(get(paste0('lag', gsub(" ", "", exposure.lag), ".tab1")),
-				file = here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+				file = here::here(paste0('reports/resources/lag ', exposure.lag),
 													paste0('lag', gsub(" ", "", exposure.lag), ".tab1.rds")
 				))
 
@@ -112,11 +113,11 @@ saveRDS(get(paste0('lag', gsub(" ", "", exposure.lag), ".tab1")),
 \caption{Summary of study population characteristics ($N = 38\,549$; $1.51$ million person-years). The cohort was restricted to individuals who were hired in or after 1938 and for whom at least half of their work history data was available. Individuals were considered lost to follow-up once they reach the maximum observed age at death.\newline}
 \centering
 ```{r tab1.render}
-source(here::here('reports', 'table1.R'))
+source(here::here('../gm-wrangling/wrangling/', 'table1.R'))
 
 assign(paste0('lag', gsub(" ", "", exposure.lag), ".tab1"),
 			 readRDS(
-			 	here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+			 	here::here(paste0('reports/resources/lag ', exposure.lag),
 			 						 paste0('lag', gsub(" ", "", exposure.lag), ".tab1.rds"))))
 
 
@@ -454,7 +455,7 @@ if (table.engine == 'pander') {
 ```
 
 ```{r get.table, eval=F}
-source(here::here('cancer mortality', 'modeling.R'))
+source(here::here('modeling.R'))
 
 get.mod(
 	outcome = outcome.selected,
@@ -463,25 +464,25 @@ get.mod(
 	run_coxph = F
 )
 
-source(here::here('reports/cancer mortality', 'coef.R'))
+source(here::here('reports', 'coef.R'))
 # get.ctab(
 # 	outcome_selected = outcome.selected,
 # 	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
-# 	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+# 	output.dir = paste0('reports/resources/lag ', exposure.lag),
 # 	messy_ref = NULL
 # 	)
 
 get.ctab(
 	outcome_selected = outcome.selected,
 	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
-	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+	output.dir = paste0('reports/resources/lag ', exposure.lag),
 	messy_ref = '_sol5'
 )
 
 get.ctab(
 	outcome_selected = outcome.selected,
 	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
-	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+	output.dir = paste0('reports/resources/lag ', exposure.lag),
 	messy_ref = '_sol10'
 )
 
@@ -489,7 +490,7 @@ get.ctab(
 get.ctab(
 	outcome_selected = outcome.selected,
 	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
-	output.dir = paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+	output.dir = paste0('reports/resources/lag ', exposure.lag),
 	messy_ref = '_sol500'
 )
 
@@ -501,7 +502,7 @@ get.ctab(
 # messyref <- "_sol500"
 # messyref <- NULL
 
-coxph.tab <- readRDS(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag), paste0(
+coxph.tab <- readRDS(here::here(paste0('reports/resources/lag ', exposure.lag), paste0(
 	ifelse(is.null(messyref), "", paste0(substring(messyref, 2), '.')), 'coxph.tab.rds')))
 
 # Make outcome name row a spacer row
@@ -810,26 +811,26 @@ options(
 	)
 )
 
-tikz(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+tikz(here::here(paste0('reports/resources/lag ', exposure.lag),
 								paste0('Figure 1.tex')),
 		 standAlone = T, width = 3.2, height = 0.4374241 * (6 + 0.275 * nrow(str.ggtab)))
 str.ggplot
 dev.off()
 
-tikz(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+tikz(here::here(paste0('reports/resources/lag ', exposure.lag),
 								paste0('Figure 2.tex')),
 		 standAlone = T, width = 3.2, height = 0.4374241 * (6 + 0.275 * nrow(sol.ggtab)))
 sol.ggplot
 dev.off()
 
-tikz(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
+tikz(here::here(paste0('reports/resources/lag ', exposure.lag),
 								paste0('Figure 3.tex')),
 		 standAlone = T, width = 3.2, height = 0.44 * (6 + 0.275 * nrow(syn.ggtab)))
 syn.ggplot
 dev.off()
 
 lualatex(pattern = ".*\\.tex",
-				 directory = here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag)))
+				 directory = here::here(paste0('reports/resources/lag ', exposure.lag)))
 
 ```
 
@@ -838,8 +839,8 @@ lualatex(pattern = ".*\\.tex",
 ```{r str.ggplot}
 if (table.engine == 'xtable') {
 	knitr::include_graphics(
-		here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
-							 paste0('str_hr_plot',  messyref, '.pdf')))
+		here::here(paste0('reports/resources/lag ', exposure.lag),
+							 "Figure 1.pdf"))
 }
 
 ```
@@ -850,8 +851,8 @@ if (table.engine == 'xtable') {
 ```{r sol.ggplot}
 if (table.engine == 'xtable') {
 	knitr::include_graphics(
-		here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
-							 paste0('sol_hr_plot',  messyref, '.pdf')))
+		here::here(paste0('reports/resources/lag ', exposure.lag),
+							 "Figure 2.pdf"))
 }
 
 ```
@@ -862,8 +863,8 @@ if (table.engine == 'xtable') {
 ```{r syn.ggplot}
 if (table.engine == 'xtable') {
 	knitr::include_graphics(
-		here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag),
-							 paste0('syn_hr_plot',  messyref, '.pdf')))
+		here::here(paste0('reports/resources/lag ', exposure.lag),
+							 "Figure 3.pdf"))
 }
 
 ```
@@ -878,7 +879,7 @@ if (table.engine == 'xtable') {
 \caption{International Classification of Diseases (ICD) codes used to define cases. Deaths prior to 1999 were defined with respect to the 9$^\text{th}$ revision. Deaths in or after 1999 were defined with respect to the 10$^\text{th}$.\newline}
 \centering
 ```{r}
-source(here::here('reports', 'cancer mortality/icd_list.R'))
+source(here::here('reports', 'icd_list.R'))
 icd <- data.frame(
 	'Cause of death' = cod.names,
 	# c(cod.names[1],
@@ -916,12 +917,12 @@ if (table.engine == 'xtable') {
 # Column widths in inches should be
 # 0.25   1.15  1.14  1.2    0.42   1   0.22
 
-coxph.tab <- readRDS(here::here(paste0('reports/cancer mortality/resources/lag ', exposure.lag), paste0(
+coxph.tab <- readRDS(here::here(paste0('reports/resources/lag ', exposure.lag), paste0(
 	ifelse(is.null(messyref), "", paste0(substring(messyref, 2), '.')), 'coxph.tab.rds')))
 
 coxph.tab <- coxph.tab[exposure != 'Trend' | is.na(exposure)]
 
-source(here::here('reports/cancer mortality', 'coef.R'))
+source(here::here('reports', 'coef.R'))
 
 for (mwf in c("Straight", "Soluble", "Synthetic")) {
 	render.ctab(mwf_which = mwf)
