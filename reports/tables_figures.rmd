@@ -179,8 +179,8 @@ cod.names <- c(
 
 ```{r smr, eval=F}
 if (!('ltab' %in% ls())) {
-	source(here::here('causes of death', 'lifetable.R'))
-	source(here::here('causes of death', 'smr.R'))
+	source(here::here('../gm-wrangling/causes of death', 'lifetable.R'))
+	source(here::here('../gm-wrangling/causes of death', 'smr.R'))
 }
 smr.df <- cohort_analytic[
 	immortal == 0 & nohist == 0 & wh == 1 & right.censored == 0]
@@ -291,8 +291,8 @@ if (table.engine == 'pander') {
 
 ```{r smr.by_race, eval=F}
 if (!('ltab' %in% ls())) {
-	source(here::here('causes of death', 'lifetable.R'))
-	source(here::here('causes of death', 'smr.R'))
+	source(here::here('../gm-wrangling/causes of death', 'lifetable.R'))
+	source(here::here('../gm-wrangling/causes of death', 'smr.R'))
 }
 smr.df <- cohort_analytic[
 	immortal == 0 & nohist == 0 & wh == 1 & right.censored == 0]

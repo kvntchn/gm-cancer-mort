@@ -1,0 +1,428 @@
+---
+title: "UAW-GM Cohort Study"
+# author: "Kevin Chen"
+subtitle: "With additional model terms; exposure lagged 21 years"
+date: \today
+output:
+  # word_document
+  pdf_document:
+    # latex_engine: lualatex
+    includes:
+      in_header: '~/HeadRs/StatHead.sty'
+# bibliography: ./../../references/gm.bib
+# csl: "C:/Users/kevchen/Documents/HeadRs/AMA.csl"
+geometry: margin=2.4cm
+---
+
+\fancyhead[R]{With additional model terms; exposure lagged 21 years; soluble referent at 0.055 mg/m$^3\cdot$y}
+\renewcommand{\arraystretch}{1.1}
+\renewcommand{\headrulewidth}{0pt}
+\thispagestyle{empty}
+
+```{r setup, include=F}
+knitr::opts_chunk$set(echo = F,
+											warning = F,
+											message = F,
+											# cache = F,
+											fig.align = 'center',
+											fig.pos = 'H',
+											results = 'asis')
+
+library(here)
+library(pander)
+library(knitr)
+library(tidyverse)
+library(data.table)
+library(date)
+library(Hmisc)
+
+source(here::here('wrangling', '00-my-theme.R'))
+
+# table.engine <- "pander"
+drive_D <- T
+table.engine <- "xtable"
+upper.percentile <- 0.99
+messyref <- '_sol5'
+
+```
+
+```{r, results='hide', echo=F, warning=F, message=F}
+# rm(list = ls())
+outcome.selected <- c("Laryngeal cancer",	"Lung cancer",
+											"Esophageal cancer", "Stomach cancer",
+											"Colon cancer",
+											"Rectal cancer", "Bladder cancer",
+											"Liver cancer",
+											"Pancreatic cancer", "Skin cancer",
+											"Prostate cancer", "Brain and nervous system cancers",
+											"Leukemia", "Breast cancer"
+											)
+
+if (!('cohort_analytic' %in% ls())) {
+	outcome.type <- 'mortality'
+	exposure.lag <- 21
+	# source(here::here('modeling', 'modeling.R'))
+}
+
+```
+
+## Introduction
+
+In previous survival analyses, hazard ratios associated with exposure to the three metalworking fluid types were estimated simultaneously in the same Cox proportional hazards model. There was a concern that those estimates may have been biased or misleading, as those models assumed independent covariate (statistical) effects e.g. that the effect of exposure to straight metalworking fluids was constant across levels of exposure to other metalworking fluid types. One way we attempted to address this concern was to fit independent models for each exposure-outcome pair of interest with one additional term to capture changes in the log-hazard associated with the combination of reference-level exposure to one metalworking fluid type and greater than reference-level exposure to some other metalworking fluid type. The reference-level exposure to straight and synthetic metalworking fluids is 0 mg/m$^3\cdot$years. That for exposure to soluble metalworking fluids is 0.055 mg/m$^3\cdot$years or less (the upper limit is analogous to 10 years of exposure at the ambient level of 5.5 $\mu$g/m$^3$).
+
+## Model
+
+Let $\boldsymbol W(t)$ represent the vector of potential confounders at time $t$. Let $X_\text{St}$, $X_\text{So}(t)$, and $X_\text{Sy}(t)$ represent cumulative exposure to straight, soluble, and synthetic metalworking fluids, respectively at time $t$. If we were interested in straight metalworking fluids, then the log hazard for the outcome could be modeled:
+$$\begin{aligned}
+\log \left[ h\left(t \mid
+\boldsymbol W(t) = \boldsymbol w(t),
+\boldsymbol X(t) = \boldsymbol x(t),
+\hat{\boldsymbol \beta}\right) \right]
+ = &\  \log\left[ h_0(t) \right] \\
+% Staight %%%%
+&\  + \hat\beta_1 \Ind{x_\text{St}(t) \in (0, \text{St}_\text{low}]}\\
+&\  + \hat\beta_2 \Ind{x_\text{St}(t) \in (\text{St}_\text{low}, \text{St}_\text{mid}]}\\
+&\  + \hat\beta_3 \Ind{x_\text{St}(t) \in (\text{St}_\text{mid}, \text{St}_\text{high}]}\\
+% Souble %%%%
+&\  + \hat\beta_4 \Ind{x_\text{So}(t) \in (0.055, \text{So}_\text{low}]}\\
+&\  + \hat\beta_5 \Ind{x_\text{So}(t) \in (\text{So}_\text{low}, \text{So}_\text{mid}]}\\
+&\  + \hat\beta_6 \Ind{x_\text{So}(t) \in (\text{So}_\text{mid}, \text{So}_\text{high}]} \\
+% Stynthetic %%%%
+&\  + \hat\beta_7 \Ind{x_\text{Sy}(t) \in (0, \text{Sy}_\text{low}]}\\
+&\  + \hat\beta_{8} \Ind{x_\text{Sy}(t) \in (\text{Sy}_\text{low}, \text{Sy}_\text{mid}]}\\
+&\  + \hat\beta_{9} \Ind{x_\text{Sy}(t) \in (\text{Sy}_\text{mid}, \text{Sy}_\text{high}]}\\
+% Interaction %%%%
+&\  + \hat\beta_{10} \Ind{x_\text{St}(t) = 0} \left(\Ind{x_\text{So}(t) > 0.055} + \Ind{x_\text{Sy}(t) > 0} \right)\\
+%&\  + \hat\beta_{11} \Ind{x_\text{So}(t) = 0} \Ind{x_\text{St}(t) + x_\text{Sy}(t) > 0} \\
+%&\  + \hat\beta_{12} \Ind{x_\text{Sy}(t) = 0} \Ind{x_\text{St}(t) + x_\text{So}(t) > 0}\\
+% Confounders %%%%
+&\  + \hat\beta_{11} w_1(t) + \hat\beta_{12} w_2(t) + \hat\beta_{13} w_3(t) + \cdots
+\end{aligned}$$
+
+where St~low~, So~low~, and Sy~low~ represent the upper boundaries of low exposure to the three types of metalworking fluids among cases at time of death, respectively; St~mid~, So~mid~, and Sy~mid~ represent the upper boundaries of moderate exposure among cases at time of death; and St~high~, So~high~, and Sy~high~ represent maximum exposure among cases at time of death. If we were interested in exposure to soluble metalworking fluids, we would replace the 10^th^ covariate with $\Ind{x_\text{So}(t) \le 0.055} \Ind{x_\text{St}(t) + x_\text{Sy}(t) > 0}$. For synthetic, we would replace with $\Ind{x_\text{Sy}(t) = 0} \Ind{x_\text{St}(t) > 0}\Ind{x_\text{So}(t) > 0.055}$. Note that if all three terms were included simultaneously, we would have a rank-deficient model matrix.
+
+<!--
+Let us focus on the contribution of the 4^th^, 8^th^, and 12^th^ terms to the log hazard estimate:
+$$\left\{\begin{array}{ll}
+\hat\beta_4 \Ind{x_\text{St}(t) = 0} \Ind{x_\text{So}(t) + x_\text{Sy}(t) > 0} \\
+\hat\beta_8 \Ind{x_\text{So}(t) = 0} \Ind{x_\text{St}(t) + x_\text{Sy}(t) > 0} \\
+\hat\beta_{12} \Ind{x_\text{Sy}(t) = 0} \Ind{x_\text{St}(t) + x_\text{So}(t) > 0}
+\end{array}\right.$$
+
+Now suppose $\boldsymbol X = \begin{pmatrix}x_\text{St} \ne 0, x_\text{So} = 0, x_\text{Sy} = 0\end{pmatrix}$. Then we have
+$$\begin{aligned}
+&=  \left\{\begin{array}{ll}
+	\hat\beta_4\cdot 0\\
+	\hat\beta_8 \cdot 1\\
+	\hat\beta_{12} \cdot 1
+		\end{array}\right.\\
+&=  \left\{\begin{array}{ll}
+	0\\
+	\hat\beta_8 \\
+	\hat\beta_{12}
+		\end{array}\right.\\
+\end{aligned}$$
+
+Analogously, if $\boldsymbol X = \begin{pmatrix}x_\text{St} = 0, x_\text{So} \ne 0, x_\text{Sy} = 0\end{pmatrix}$. Then we have
+$$\begin{aligned}
+&=  \left\{\begin{array}{ll}
+	\hat\beta_4\\
+	0 \\
+	\hat\beta_{12}
+		\end{array}\right.\\
+\end{aligned}$$
+
+And if $\boldsymbol X = \begin{pmatrix}x_\text{St} = 0, x_\text{So} = 0, x_\text{Sy} \ne 0\end{pmatrix}$. Then we have
+$$\begin{aligned}
+&=  \left\{\begin{array}{ll}
+	\hat\beta_4\\
+	\hat\beta_8 \\
+	0
+	\end{array}\right.\\
+\end{aligned}$$
+
+Expanding the 4^th^, 8^th^, and 12^th^ covariates, we have
+$$\begin{aligned}
+&= \left\{\begin{array}{ll}
+	\Ind{x_\text{St}(t) = 0}
+		\left(\Ind{x_\text{So}(t) \ne 0} + \Ind{x_\text{Sy}(t) \ne 0}\right)\\
+	\Ind{x_\text{So}(t) = 0}
+		\left(\Ind{x_\text{St}(t) \ne 0} + \Ind{x_\text{Sy}(t) \ne 0}\right) \\
+	\Ind{x_\text{Sy}(t) = 0}
+		\left(\Ind{x_\text{St}(t) \ne 0} + \Ind{x_\text{So}(t) \ne 0}\right)
+		\end{array}\right.\\
+&=  \left\{\begin{array}{ll}
+	\Ind{x_\text{St}(t) = 0}
+		\left(1 - \Ind{x_\text{So}(t) = 0} + 1 - \Ind{x_\text{Sy}(t) = 0}\right)\\
+	\Ind{x_\text{So}(t) = 0}
+		\left(1 - \Ind{x_\text{St}(t) = 0} + 1 - \Ind{x_\text{Sy}(t) = 0}\right) \\
+	\Ind{x_\text{Sy}(t) = 0}
+		\left(1 - \Ind{x_\text{St}(t) = 0} + 1 - \Ind{x_\text{So}(t) =0}\right)
+		\end{array}\right.\\
+&=  \left\{\begin{array}{ll}
+	\Ind{x_\text{St}(t) = 0}
+		\left(2 - \Ind{x_\text{So}(t) = 0} - \Ind{x_\text{Sy}(t) = 0}\right)\\
+	\Ind{x_\text{So}(t) = 0}
+		\left(2 - \Ind{x_\text{St}(t) = 0} - \Ind{x_\text{Sy}(t) = 0}\right) \\
+	\Ind{x_\text{Sy}(t) = 0}
+		\left(2 - \Ind{x_\text{St}(t) = 0} - \Ind{x_\text{So}(t) = 0}\right)
+		\end{array}\right.\\
+&=  \left\{\begin{array}{ll}
+		2\Ind{x_\text{St}(t) = 0} - \Ind{x_\text{St}(t) = 0}\Ind{x_\text{So}(t) = 0} - \Ind{x_\text{St}(t) = 0}\Ind{x_\text{Sy}(t) = 0}\\
+		2\Ind{x_\text{So}(t) = 0} - \Ind{x_\text{St}(t) = 0}\Ind{x_\text{So}(t) = 0} - \Ind{x_\text{So}(t) = 0}\Ind{x_\text{Sy}(t) = 0} \\
+		2\Ind{x_\text{Sy}(t) = 0} - \Ind{x_\text{St}(t) = 0}\Ind{x_\text{Sy}(t) = 0} - \Ind{x_\text{So}(t) = 0}\Ind{x_\text{Sy}(t) = 0}
+		\end{array}\right.
+		\end{aligned}$$
+		
+If the three covariates are linearly independent, then the only vector $\boldsymbol a = \begin{pmatrix}a_1 & a_2 & a_3\end{pmatrix}$ that sends the vector space above to $\mathbf 0$ is $\boldsymbol a = \begin{pmatrix}0&0&0\end{pmatrix}$.
+$$\begin{aligned}
+\begin{bmatrix}
+2 & 0 & 0\\
+0 & 2 & 0\\
+0 & 0 & 2\\
+- 1 & -1 & 0\\
+- 1 & 0 & -1\\
+0 & - 1 & - 1\\
+\end{bmatrix}\begin{pmatrix}
+a_1 \\ a_2 \\ a_3
+\end{pmatrix}
+\end{aligned}$$
+
+```{r, include=F, eval=F}
+A <- matrix(c(
+	2, 0, 0, -1, -1, 0,
+	0, 2, 0, -1, 0, -1,
+	0, 0, 2, 0, -1, -1
+), ncol =3, byrow = F)
+qr(A)$rank
+qr(t(A))$rank
+```
+-->
+
+\newpage
+
+## Results
+
+```{r table, eval=F}
+get.mod(
+							cohort_py = as.data.table(as.data.frame(
+								cohort_analytic)),
+							outcome = outcome_selected,
+							probs = probs,
+							outcome_type = outcome.type,
+							specific.race = NULL,
+							run_coxph = F,
+							stratify.baseline = T,
+							special.interaction = NULL
+						)
+
+# Column widths in inches should be
+# 1.5   0.94   1.2   0.42   0.42   1   0.22
+source(here::here('reports', 'coef.R'))
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir = paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/'),
+	output.dir = paste0('reports/emm/resources/lag ', exposure.lag, '/Intxn'),
+	mwf.vec = c("Straight", "Soluble", "Synthetic"),
+	messy_ref = NULL,
+	additional_term = T
+)
+
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir = paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/'),
+	output.dir = paste0('reports/emm/resources/lag ', exposure.lag, '/Intxn'),
+	mwf.vec = c("Straight", "Soluble", "Synthetic"),
+	messy_ref = '_sol500',
+	additional_term = T
+)
+
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir = paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/'),
+	output.dir = paste0('reports/emm/resources/lag ', exposure.lag, '/Intxn'),
+	mwf.vec = c("Straight", "Soluble", "Synthetic"),
+	messy_ref = '_sol10',
+	additional_term = T
+)
+
+get.ctab(
+	outcome_selected = outcome.selected,
+	coxph.dir = paste0('modeling/resources/mortality/emm/lag ', exposure.lag, '/Intxn/'),
+	output.dir = paste0('reports/emm/resources/lag ', exposure.lag, '/Intxn'),
+	mwf.vec = c("Straight", "Soluble", "Synthetic"),
+	messy_ref = '_sol5',
+	additional_term = T
+)
+
+```
+
+```{r table.render}
+# messyref <- NULL
+# messyref <- '_sol500'
+# messyref <- '_sol10'
+# messyref <- '_sol5'
+
+load(file=to_drive_D(here::here(paste0('reports/emm/resources/lag ', exposure.lag, '/Intxn'),
+										 paste0(substring(messyref, 2), ifelse(!is.null(messyref), ".", ""), 'coxph.tab', '.rdata'))))
+
+names(coxph.tab)[1:2] <- c(' ', '  ')
+
+source(here::here('reports', 'coef.R'))
+
+for(mwf in c("Straight", "Soluble", "Synthetic")) {
+	render.ctab(mwf_which = mwf)
+}
+
+```
+
+```{r tikz, eval=F}
+coxph.ggtab <- as.data.table(as.data.frame(coxph.tab[!is.na(`  `), .(
+	Outcome = factor(outcome, levels = unique(outcome)),
+	exposure = factor(gsub("\\\\\\hspace\\{.*\\}|&#9;", "", `  `),
+										levels = unique(
+											gsub("\\\\\\hspace\\{.*\\}|&#9;", "", `  `)
+										)),
+	HR = as.numeric(HR),
+	lower = as.numeric(substr(`95\\% CI`, 2, unlist(
+		gregexpr(',', `95\\% CI`)
+	) - 1)),
+	upper = as.numeric(substr(
+		`95\\% CI`, unlist(gregexpr(',', `95\\% CI`)) + 2,
+		nchar(`95\\% CI`) - 1
+	)),
+	`$p$`,
+	mwf
+)]))
+
+# Prep for Straight
+coxph.ggtab[exposure != 'Trend' & mwf == "Straight"] %>%
+	as.data.frame() %>%	as.data.table() -> Straight.ggtab
+Straight.ggtab[, I := 1:.N]
+Straight.ggtab <- Straight.ggtab[exposure != '0']
+# Prep for Soluble
+coxph.ggtab[exposure != 'Trend' & mwf == "Soluble"] %>%
+	as.data.frame() %>%	as.data.table() -> Soluble.ggtab
+Soluble.ggtab[, I := 1:.N]
+Soluble.ggtab <- Soluble.ggtab[exposure != '0']
+# Prep for Synthetic
+coxph.ggtab[exposure != 'Trend' & mwf == "Synthetic"] %>%
+	as.data.frame() %>%	as.data.table() -> Synthetic.ggtab
+Synthetic.ggtab[, I := 1:.N]
+Synthetic.ggtab <- Synthetic.ggtab[exposure != '0']
+
+tikz(here::here(paste0('reports/emm/resources/lag ', exposure.lag, '/intxn'),
+								paste0('hr_plot', messyref, '.tex')),
+		 standAlone = T, width = 6.25, height = 9)
+cowplot::plot_grid(
+	# Plot Straight
+	Straight.ggtab %>% ggplot(aes(
+		x = I,
+		y = HR,
+		ymin = lower,
+		ymax = upper,
+		shape = Outcome
+	), ) +
+		geom_pointrange(size = 0.07) +
+		scale_shape_manual(values = c(1:7, 1:7)) +
+		# geom_linerange() +
+		facet_wrap(. ~ mwf, scales = 'free_x', ncol = 1) +
+		scale_x_continuous(breaks = Straight.ggtab[,.(I[-1]), by = .(Outcome)]$V1,
+											 labels = Straight.ggtab[,.(exposure[-1]), by = .(Outcome)]$V1) +
+		coord_cartesian(ylim = c(0, 4)) +
+		geom_hline(aes(yintercept = 1), color = 'gray') +
+		mytheme +
+		theme(
+			panel.grid = element_blank(),
+			axis.text.x = element_text(angle = -90, vjust = 0.35, hjust = 0),
+			axis.title.x = element_blank()
+		) +
+		# Suppress legend
+		theme(legend.position = 'none')
+	,
+	# # Blank
+	# ggplot(data.frame()) + geom_pointrange(size = 0.07) + theme_void()
+	# ,
+	# Plot soluble
+	Soluble.ggtab %>% ggplot(aes(
+		x = I,
+		y = HR,
+		ymin = lower,
+		ymax = upper,
+		shape = Outcome
+	),) +
+		geom_pointrange(size = 0.07) +
+		scale_shape_manual(values = c(1:7, 1:7)) +
+		# geom_linerange() +
+		facet_wrap(. ~ mwf, scales = 'free_x', ncol = 1) +
+		scale_x_continuous(breaks = Soluble.ggtab[,.(I[-1]), by = .(Outcome)]$V1,
+											 labels = Soluble.ggtab[,.(exposure[-1]), by = .(Outcome)]$V1) +
+		coord_cartesian(ylim = c(0, 4)) +
+		geom_hline(aes(yintercept = 1), color = 'gray') +
+		mytheme +
+		theme(
+			panel.grid = element_blank(),
+			axis.text.x = element_text(angle = -90, vjust = 0.35, hjust = 0),
+			axis.title.x = element_blank()
+		) +
+		# Suppress legend
+		theme(legend.position = 'none')
+	,
+	# Plot synthetic
+	Synthetic.ggtab %>% ggplot(aes(
+		x = I,
+		y = HR,
+		ymin = lower,
+		ymax = upper,
+		shape = Outcome
+	),) +
+		geom_pointrange(size = 0.07) +
+		scale_shape_manual(values = c(1:7, 1:7)) +
+		# geom_linerange() +
+		facet_wrap(. ~ mwf, scales = 'free_x', ncol = 1) +
+		scale_x_continuous(breaks = Synthetic.ggtab[,.(I[-1]), by = .(Outcome)]$V1,
+											 labels = Synthetic.ggtab[,.(exposure[-1]), by = .(Outcome)]$V1) +
+		coord_cartesian(ylim = c(0, 4)) +
+		geom_hline(aes(yintercept = 1), color = 'gray') +
+		mytheme +
+		theme(
+			panel.grid = element_blank(),
+			axis.text.x = element_text(angle = -90, vjust = 0.35, hjust = 0),
+			axis.title.x = element_blank()
+		) +
+		# Suppress legend
+		theme(legend.position = 'none')
+	,
+	# # Blank
+	# ggplot(data.frame()) + geom_pointrange(size = 0.07) + theme_void()
+	# ,
+		# Legend
+	get_legend(
+		Soluble.ggtab %>% ggplot(aes(
+			x = I,
+			y = HR,
+			ymin = lower,
+			ymax = upper,
+			shape = Outcome
+		)) + geom_pointrange() + mytheme + 
+			theme(legend.position = 'bottom') +
+			scale_shape_manual(values = c(1:7, 1:7)) +
+			guides(shape = guide_legend(override.aes = list(size = 0.06),
+																	ncol = 4,
+																	byrow = T))
+	)
+	,
+	nrow = 4,
+	ncol = 1,
+	rel_heights = c(1, 1, 1, 0.5)
+)
+dev.off()
+```
+
+
+```{r tikz.render}
+knitr::include_graphics(
+	here::here(paste0('reports/emm/resources/lag ', exposure.lag, '/intxn'),
+								paste0('hr_plot', messyref, '.tex'))
+)
+```
