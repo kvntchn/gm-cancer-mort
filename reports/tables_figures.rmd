@@ -69,7 +69,7 @@ messyref <- '_sol5'
 
 ```{r get_cohort, results='hide', echo=F, warning=F, message=F}
 # rm(list = ls())
-outcome.selected <- c("Laryngeal cancer",	"Lung cancer",
+outcome.selected <- c("All cancers", "Laryngeal cancer",	"Lung cancer",
 											"Esophageal cancer", "Stomach cancer",
 											"Colon cancer",
 											"Rectal cancer", "Bladder cancer",
@@ -473,8 +473,8 @@ source(here::here('reports', 'coef.R'))
 # 	)
 
 get.ctab(
-	outcome_selected = outcome.selected,
-	coxph.dir  = paste0('modeling/resources/mortality/lag ', exposure.lag),
+	outcome_selected = "All cancers", # outcome.selected,
+	coxph.dir  = paste0('resources/lag ', exposure.lag),
 	output.dir = paste0('reports/resources/lag ', exposure.lag),
 	messy_ref = '_sol5'
 )
@@ -929,3 +929,4 @@ for (mwf in c("Straight", "Soluble", "Synthetic")) {
 }
 
 ```
+

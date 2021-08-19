@@ -17,9 +17,9 @@ get.ctab <- function(
 	additional_term = F
 ) {
 
-	get.coxph.tab <- function(mwf) {
+	get.coxph.tab <- function(mwf = "") {
 			rbindlist(
-				lapply(outcome_selected, function(outcome_i) {
+				lapply(outcome_selected, function(outcome_i = outcome_selected[1]) {
 					tmp.coxph <- readRDS(to_drive_D(here::here(
 						paste0(coxph.dir, mwf),
 						paste0(
@@ -86,6 +86,8 @@ get.ctab <- function(
 						ifelse(is.null(mwf.vec), "^strai|^sol|^synth", paste0('^', mwf)),
 						coxph.tab$name, ignore.case = T),]
 
+					coxph.tab$name <- factor(coxph.tab$name)
+
 					coxph.tab$name <- with(coxph.tab, gsub("500|10|5", "", levels(name)[as.numeric(name)]))
 
 					if (is.null(mwf.vec)) {
@@ -142,7 +144,9 @@ get.ctab <- function(
 
 					trend.df$mwf <- with(trend.df, gsub("500|10|5", "", mwf))
 
-					trend.df$level <- levels(trend.df$level)[as.numeric(trend.df$level)]
+					if (class(trend.df$level) == "factor") {
+						trend.df$level <- levels(trend.df$level)[as.numeric(trend.df$level)]
+					}
 
 					trend.df <- rbind(trend.df,
 														data.frame(
@@ -325,7 +329,9 @@ get.ctab <- function(
 
 					coxph.tab <- coxph.tab[,c(1:5, 9, 8)]
 
-					coxph.tab[, level := levels(level)[as.numeric(level)]]
+					if (class(coxph.tab$level) == "factor") {
+						coxph.tab[, level := levels(level)[as.numeric(level)]]
+					}
 
 					coxph.tab[level != "Trend", `:=`(
 						exposure.lower = as.numeric(substr(
@@ -475,10 +481,10 @@ get.ctab <- function(
 		}
 
 	if (save_coxph.tab) {
-		saveRDS(coxph.tab, file = to_drive_D(here::here(
+		saveRDS(coxph.tab, file = here::here(
 			output.dir,	paste0(
 				ifelse(!is.null(messy_ref),
-							 paste0(substring(messy_ref, 2), "."), ""), 'coxph.tab', '.rds'))))
+							 paste0(substring(messy_ref, 2), "."), ""), 'coxph.tab', '.rds')))
 	}
 
 }

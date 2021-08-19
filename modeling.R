@@ -743,16 +743,18 @@ if (outcome.type == 'mortality') {
 # 	outcome = outcome.selected,
 # 	probs = probs,
 # 	outcome_type = outcome.type,
-# 	run_coxph = T
+# 	run_coxph = T,
+#   stratify.baseline = F
 # )
 
-# Run messy! ####
+# # Run messy! ####
 # get.mod(
 # 	cohort_py = cohort_analytic,
-# 	outcome = outcome.selected,
+# 	outcome = "All cancers", # outcome.selected,
 # 	probs = probs,
 # 	outcome_type = outcome.type,
-# 	run_coxph = F,
+# 	run_coxph = T,
 # 	run_messy = 'Soluble',
-# 	rm_stepwise = T
+# 	rm_stepwise = T,
+# 	stratify.baseline = F
 # )
